@@ -21,6 +21,9 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     nav: [
       { href: "/seller", label: "Dashboard" },
       { href: "/seller/new", label: "New Design" },
+      { href: "/seller/payouts", label: "Payouts" },
+      { href: "/seller/shipping", label: "Shipping" },
+      { href: "/seller/fulfillment", label: "Fulfillment" },
       { href: "/seller/analytics", label: "Analytics" },
     ],
   },

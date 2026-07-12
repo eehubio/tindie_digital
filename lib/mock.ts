@@ -8,6 +8,7 @@ import {
   Dispute,
   IpComplaint,
 } from "./types";
+import { Fulfillment } from "./shipping";
 
 // Platform payment config — in production this comes from the admin panel / DB.
 export const paymentConfig: PaymentConfig = {
@@ -380,6 +381,50 @@ export const seedEntitlements: Entitlement[] = [
     downloadCount: 2,
     version: "2026.06",
     status: "active",
+  },
+];
+
+export const seedFulfillments: Fulfillment[] = [
+  {
+    id: "ff_5001",
+    orderRef: "TD-88213",
+    productTitle: "RS485 ↔ TTL Module (MAX485E) — assembled board",
+    buyerName: "Lena Fischer",
+    destination: "DE",
+    weightG: 42,
+    goodsValue: 19.99,
+    status: "unfulfilled",
+    placedAt: "2026-07-11",
+  },
+  {
+    id: "ff_5002",
+    orderRef: "TD-88207",
+    productTitle: "RP2350 Pocket Instrument — kit",
+    buyerName: "Marcus Webb",
+    destination: "US",
+    weightG: 180,
+    goodsValue: 64.0,
+    status: "label_purchased",
+    carrierId: "usps",
+    service: "USPS Priority",
+    tracking: "9400 1000 0000 4471028836",
+    labelCost: 9.4,
+    placedAt: "2026-07-09",
+  },
+  {
+    id: "ff_5003",
+    orderRef: "TD-88190",
+    productTitle: "RF Symbols Pack — printed reference card",
+    buyerName: "Sofia Álvarez",
+    destination: "AU",
+    weightG: 60,
+    goodsValue: 12.0,
+    status: "shipped",
+    carrierId: "dhl_express",
+    service: "DHL Express",
+    tracking: "JD014600009212345678",
+    labelCost: 36.5,
+    placedAt: "2026-07-05",
   },
 ];
 

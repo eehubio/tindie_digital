@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
+import VoiceCapture from "@/components/VoiceCapture";
+import NetIncomeCalculator from "@/components/NetIncomeCalculator";
+import ShippingProfileEditor from "@/components/ShippingProfileEditor";
 
 const STEPS = [
   "Type",
@@ -11,6 +14,8 @@ const STEPS = [
   "Components",
   "Visibility",
   "Licenses",
+  "Pricing",
+  "Shipping",
   "Manufacturing",
   "Publish",
 ];
@@ -67,8 +72,10 @@ export default function NewDesignWizard() {
         {step === 3 && <StepComponents onNext={() => setStep(4)} />}
         {step === 4 && <StepVisibility onNext={() => setStep(5)} />}
         {step === 5 && <StepLicenses onNext={() => setStep(6)} />}
-        {step === 6 && <StepManufacturing onNext={() => setStep(7)} />}
-        {step === 7 && (
+        {step === 6 && <StepPricing onNext={() => setStep(7)} />}
+        {step === 7 && <StepShipping onNext={() => setStep(8)} />}
+        {step === 8 && <StepManufacturing onNext={() => setStep(9)} />}
+        {step === 9 && (
           <StepPublish
             onPublish={() => {
               showToast("Design published (simulated)");
@@ -124,6 +131,7 @@ function StepType({ onNext }: { onNext: () => void }) {
 
 function StepUpload({ onNext }: { onNext: () => void }) {
   const [files, setFiles] = useState<string[]>([]);
+  const [voiced, setVoiced] = useState(false);
   const mockTree = [
     ["board.kicad_pro", "KiCad Project", "12 KB"],
     ["board.kicad_sch", "Schematic", "486 KB"],
@@ -161,8 +169,74 @@ function StepUpload({ onNext }: { onNext: () => void }) {
         </div>
       )}
 
-      <button className="t-btn-primary mt-4" onClick={onNext} disabled={files.length === 0}>
+      {/* Voice is the low-friction entry point: many sellers can describe a board
+          in 20 seconds but will abandon a 30-field form. */}
+      <div className="mt-6 pt-5 border-t border-line">
+        <h3 className="font-semibold text-navy text-sm mb-1">
+          Or just talk <span className="t-tag bg-cta text-white ml-1">SmartList</span>
+        </h3>
+        <p className="text-xs text-muted mb-3">
+          Describe the board out loud. Speech is transcribed, fields are extracted, and every extracted value keeps a
+          pointer back to where it came from — voice, schematic, BOM or README.
+        </p>
+        <VoiceCapture onExtract={() => setVoiced(true)} />
+      </div>
+
+      <button className="t-btn-primary mt-5" onClick={onNext} disabled={files.length === 0 && !voiced}>
         Start parsing
+      </button>
+      {files.length === 0 && !voiced && (
+        <p className="t-hint mt-2">Upload files or record a voice description to continue.</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pricing — the seller sees the real cost stack before naming a price.
+// ---------------------------------------------------------------------------
+function StepPricing({ onNext }: { onNext: () => void }) {
+  const { shipProfile } = useApp();
+  return (
+    <div>
+      <h2 className="font-semibold text-navy mb-1">Pricing &amp; net income</h2>
+      <p className="text-sm text-muted mb-4 max-w-3xl">
+        A 5–10% commission is not what a listing actually costs. Payment fees, cross-border and FX charges, and the
+        outbound label all land on the seller. Model them here, before publishing — the wizard blocks a publish that
+        would lose money on every unit.
+      </p>
+      <NetIncomeCalculator initialPrice={19.99} profile={shipProfile} />
+      <div className="mt-4 rounded-lg bg-teal-light/50 border border-teal/30 p-3 text-xs text-teal-dark leading-relaxed">
+        <strong>Two things worth trying.</strong> Switch the seller region to China — the corridor flips to Wise and
+        the cost structure changes shape entirely. Then switch the goods type to digital and drag the cart size: the
+        fixed fee amortises, which is the whole argument for bundling rather than raising prices.
+      </div>
+      <button className="t-btn-primary mt-4" onClick={onNext}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shipping — same profile object the calculator, checkout and fulfillment read.
+// ---------------------------------------------------------------------------
+function StepShipping({ onNext }: { onNext: () => void }) {
+  const { shipProfile, setShipProfile } = useApp();
+  return (
+    <div>
+      <h2 className="font-semibold text-navy mb-1">
+        Shipping, customs &amp; reachable countries{" "}
+        <span className="t-tag bg-cta text-white ml-1">conversion lever</span>
+      </h2>
+      <p className="text-sm text-muted mb-4 max-w-3xl">
+        Only applies to physical fulfillment — a pure digital asset skips this. Configure once; the buyer sees a live
+        rate, a delivery window and an honest customs answer for their own country, and the label bought at fulfillment
+        comes from the same rates.
+      </p>
+      <ShippingProfileEditor profile={shipProfile} onChange={setShipProfile} goodsValue={19.99} />
+      <button className="t-btn-primary mt-5" onClick={onNext}>
+        Continue
       </button>
     </div>
   );

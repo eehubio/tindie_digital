@@ -2,7 +2,8 @@
 
 import { create } from "zustand";
 import { CartItem, Role, QuoteRequest, ManufacturingOrder, Entitlement, Dispute } from "./types";
-import { seedQuotes, seedOrders, seedEntitlements, seedDisputes } from "./mock";
+import { seedQuotes, seedOrders, seedEntitlements, seedDisputes, seedFulfillments } from "./mock";
+import { ShipProfile, defaultShipProfile, Fulfillment } from "./shipping";
 
 interface AppState {
   role: Role;
@@ -26,6 +27,17 @@ interface AppState {
 
   disputes: Dispute[];
   addDispute: (d: Dispute) => void;
+
+  // Shipping profile — one config shared by the wizard, the calculator,
+  // buyer checkout and fulfillment. Changing it here changes all four.
+  shipProfile: ShipProfile;
+  setShipProfile: (p: ShipProfile) => void;
+
+  fulfillments: Fulfillment[];
+  updateFulfillment: (id: string, patch: Partial<Fulfillment>) => void;
+
+  destination: string;
+  setDestination: (d: string) => void;
 
   toast: string | null;
   showToast: (msg: string) => void;
@@ -98,6 +110,16 @@ export const useApp = create<AppState>((set) => ({
 
   disputes: seedDisputes,
   addDispute: (d) => set((s) => ({ disputes: [d, ...s.disputes], toast: "Dispute opened" })),
+
+  shipProfile: defaultShipProfile,
+  setShipProfile: (p) => set({ shipProfile: p }),
+
+  fulfillments: seedFulfillments,
+  updateFulfillment: (id, patch) =>
+    set((s) => ({ fulfillments: s.fulfillments.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
+
+  destination: "DE",
+  setDestination: (d) => set({ destination: d }),
 
   toast: null,
   showToast: (msg) => set({ toast: msg }),

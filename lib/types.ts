@@ -226,6 +226,7 @@ export interface CartItem {
   sellerName: string;
   unitPrice: number;
   qty: number;
+  weightG?: number; // physical items only — drives the live shipping quote
 }
 
 export interface Entitlement {
