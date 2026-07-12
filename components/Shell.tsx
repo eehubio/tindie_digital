@@ -45,6 +45,7 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
       { href: "/admin/disputes", label: "Disputes" },
       { href: "/admin/ip", label: "IP Complaints" },
       { href: "/admin/payments", label: "Payments" },
+      { href: "/admin/logistics", label: "Logistics" },
     ],
   },
 };

@@ -131,11 +131,24 @@ Why show sellers all of this: a 5% headline commission is not their real cost. O
 - **Commercial invoices are generated, not typed** — the order layer builds the PDF from the HS code and declared value and hands it to the carrier with the label.
 - **`/seller/fulfillment`** — rate-shop across carriers, buy the label, and the **tracking number is written back to the order automatically**; the buyer is notified without the seller touching a field. Manual entry stays available for corridors the aggregator does not serve (China Post, Yanwen).
 
-### 4.4 What this changes about the cart
+### 4.4 Logistics providers are configuration too / 物流服务商可配置
+
+`lib/logistics.ts` · `/admin/logistics`
+
+Carriers get the same treatment as manufacturing partners: a provider is a **record**, not a branch in the code. Shippo, EasyPost, Pirate Ship, a direct DHL account, and the manual China Post / Yanwen lanes each carry their own integration depth, negotiated discount, per-label fee, origin coverage and routing priority. Fulfillment rate-shops the eligible ones and buys the cheapest.
+
+**Eligibility is enforced, not remembered.** On a cross-border lane Pirate Ship drops out despite having the best discount, because it cannot generate a commercial invoice. Cheapest ≠ eligible, and that rule belongs in the routing engine rather than in a seller's head.
+
+Two policies live here that are usually left implicit, and both decide whether sellers trust the platform:
+
+- **Label markup** — at cost / fixed handling fee / percentage. Default is **at cost**, because sellers compare your label price against the carrier's own website within a week of joining. A markup is discoverable, so if it exists it must be shown as its own line, never folded into the rate.
+- **Post-billing adjustments** — carriers re-rate a parcel when actual weight or dimensions differ from the declaration. Not an edge case; a weekly occurrence at volume. Someone pays. Default is **split**: the platform absorbs anything under the threshold, larger adjustments are escalated to the seller with the carrier's evidence attached. That bounds the platform's exposure without punishing an honest 20-gram error.
+
+### 4.5 What this changes about the cart
 
 `/cart` now handles a **mixed digital + physical** basket in one Stripe charge: digital subtotal + small-order fee + live shipping quote + IOSS VAT. The buyer sees one number; the platform pays the fixed fee once. Add the assembled board from the cart page to see shipping, customs and VAT enter the same checkout.
 
-### 4.5 Every seller type is now supported / 上架流程按商品类型分叉
+### 4.6 Every seller type is now supported / 上架流程按商品类型分叉
 
 The wizard is no longer a single linear form. The flow is a **function of what is being sold** — a physical seller is never walked through license tiers, and a digital seller is never asked for a parcel weight.
 
@@ -147,7 +160,7 @@ The wizard is no longer a single linear form. The flow is a **function of what i
 | **Professional service** | Type → AI Compose → Pricing → Publish |
 | **Manufacturing service** | partner accounts only |
 
-### 4.6 AI Compose — multi-modal listing generation / 智能上架
+### 4.7 AI Compose — multi-modal listing generation / 智能上架
 
 `components/AIComposer.tsx` + `lib/listing.ts`
 
@@ -158,7 +171,7 @@ Three rules, all visible in the UI:
 - **Corroboration raises confidence; conflict is resolved by the files.** A schematic is evidence, speech is a claim.
 - **Nothing under 80% is published without a human confirming it.** Stock quantity, for example, is never inferable — it is flagged rather than guessed.
 
-### 4.7 Preorder / Build campaigns / 预售机制
+### 4.8 Preorder / Build campaigns / 预售机制
 
 `lib/build.ts` + `lib/campaigns.ts` · wizard step, `/seller/build`, `/seller/build/manufacturing`, `/seller/build/orders`, `/campaign/[slug]`
 
@@ -209,6 +222,7 @@ Use the **"View as"** role switcher in the teal bar at the top of every page.
 **Admin**
 - `/admin` — overview, with the small-order economics comparison front and centre
 - `/admin/partners` — **the proof that nothing is hardcoded**: change status, commission model, commission rate, quote mode, strategic weighting
+- `/admin/logistics` — **the same proof for carriers**: providers, negotiated discounts, per-label fees, integration depth, routing priority; plus the two policies that decide whether sellers trust you — label markup and post-billing adjustments — and a live rate-shop simulator
 - `/admin/disputes` · `/admin/ip` · `/admin/payments`
 
 ---
@@ -245,6 +259,10 @@ components/
   NetIncomeCalculator.tsx  dual-corridor cost stack (Stripe / Wise)
   ShippingProfileEditor.tsx  zones, customs, IOSS + live buyer preview
 lib/
+  logistics.ts             carrier providers, discounts, markup + adjustment policy
+  build.ts                 preorder campaigns (ported contract from ezplm_prebuild)
+  campaigns.ts             campaign seed data
+  listing.ts               Tindie listing field schema + AI extraction model
   types.ts                 domain model — the future API contract
   mock.ts                  all seed data + platform payment config
   engine.ts                partner routing scorer + digital payment breakdown

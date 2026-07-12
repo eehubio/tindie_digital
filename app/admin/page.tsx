@@ -163,6 +163,15 @@ export default function AdminPage() {
                 — not yet visible in routing.
               </span>
             </li>
+            <li className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-muted mt-1.5 shrink-0" />
+              <span>
+                <Link href="/admin/logistics" className="text-link hover:underline">
+                  2 logistics providers in draft
+                </Link>{" "}
+                — EasyPost failover and the direct DHL account are configured but not live.
+              </span>
+            </li>
           </ul>
 
           <h3 className="font-bold text-navy mt-6 mb-2">Manufacturing GMV</h3>
