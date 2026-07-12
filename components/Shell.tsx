@@ -13,6 +13,7 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
       { href: "/", label: "Marketplace" },
       { href: "/search", label: "Browse" },
       { href: "/library", label: "My Library" },
+      { href: "/campaign/pocket-logic-analyzer", label: "Preorders" },
       { href: "/orders", label: "Mfg Orders" },
     ],
   },
@@ -20,7 +21,8 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     href: "/seller",
     nav: [
       { href: "/seller", label: "Dashboard" },
-      { href: "/seller/new", label: "New Design" },
+      { href: "/seller/new", label: "New Listing" },
+      { href: "/seller/build", label: "Preorder" },
       { href: "/seller/payouts", label: "Payouts" },
       { href: "/seller/shipping", label: "Shipping" },
       { href: "/seller/fulfillment", label: "Fulfillment" },

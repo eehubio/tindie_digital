@@ -135,6 +135,47 @@ Why show sellers all of this: a 5% headline commission is not their real cost. O
 
 `/cart` now handles a **mixed digital + physical** basket in one Stripe charge: digital subtotal + small-order fee + live shipping quote + IOSS VAT. The buyer sees one number; the platform pays the fixed fee once. Add the assembled board from the cart page to see shipping, customs and VAT enter the same checkout.
 
+### 4.5 Every seller type is now supported / 上架流程按商品类型分叉
+
+The wizard is no longer a single linear form. The flow is a **function of what is being sold** — a physical seller is never walked through license tiers, and a digital seller is never asked for a parcel weight.
+
+| Type | Flow |
+|---|---|
+| **Physical product** | Type → **AI Compose** → Pricing → Shipping → **Preorder** → Publish |
+| **Digital design** | Type → Upload → Parsing → Components → Visibility → Licenses → Pricing → Publish |
+| **Physical + digital bundle** | the union of both |
+| **Professional service** | Type → AI Compose → Pricing → Publish |
+| **Manufacturing service** | partner accounts only |
+
+### 4.6 AI Compose — multi-modal listing generation / 智能上架
+
+`components/AIComposer.tsx` + `lib/listing.ts`
+
+Four inputs, any combination: **voice · typed note · product photos · engineering files + repo**. The output is **the existing Tindie product-create form, filled in** — name, category, price, stock, Markdown description, tags, weight, dimensions, doc links, OSHWA UID. The AI does not invent a second listing model; it fills the one Tindie already has. That is what makes it an extension rather than a parallel product, and it is why an experienced seller can ignore all of it and use the classic form.
+
+Three rules, all visible in the UI:
+- **Every field carries a confidence score and its source list.** "from voice + schematic + README" is printed next to the value.
+- **Corroboration raises confidence; conflict is resolved by the files.** A schematic is evidence, speech is a claim.
+- **Nothing under 80% is published without a human confirming it.** Stock quantity, for example, is never inferable — it is flagged rather than guessed.
+
+### 4.7 Preorder / Build campaigns / 预售机制
+
+`lib/build.ts` + `lib/campaigns.ts` · wizard step, `/seller/build`, `/seller/build/manufacturing`, `/seller/build/orders`, `/campaign/[slug]`
+
+Ported from **`eehubio/ezplm_prebuild`** with the type contract unchanged — `BuildProject`, `ManufacturingReview`, quote tiers, `computeForecast()`, `buildCampaignPayload()`. A campaign created here serialises to the exact **Campaign JSON** that module already emits, so ezPLM stays the producer and Tindie a consumer of one contract rather than a fork. (Visible in the seller dashboard: "Show Campaign JSON".)
+
+**Three campaign types, presented as a risk ladder** — the buyer-facing risk label is on the campaign page, not buried in terms:
+
+| Type | Money | For |
+|---|---|---|
+| Interest Check | **no payment taken** | a first-time maker who has never manufactured |
+| Batch Build | **authorised, captured only on goal** | crowdfunding-style production run |
+| Rolling Preorder | **charged immediately — highest obligation** | proven design, simply out of stock |
+
+**Demand becomes a margin number.** The manufacturing partner returns a DFM score and a **tiered quote** (50 / 100 / 200 units). The wizard and `/seller/build/manufacturing` compute margin at every tier live, and highlight **the tier the forecast actually supports** — not the one with the best headline margin. Producing 200 to chase three margin points when demand forecasts 100 is precisely how hardware sellers end up with a garage full of stock.
+
+**One honest constraint surfaced rather than hidden:** Stripe authorisations expire in about 7 days, so a campaign running longer cannot rely on a long-lived hold — it needs a saved payment method plus an off-session charge at goal. The deadline and the capture mechanism have to be designed together. That note is in the wizard, because it is an architecture decision, not a UI detail.
+
 ---
 
 ## 5. Walkthrough / 演示路径
@@ -150,7 +191,11 @@ Use the **"View as"** role switcher in the teal bar at the top of every page.
 6. `/orders` — 6-step manufacturing tracker, "simulate next status"
 
 **Seller**
-- `/seller/new` — 10-step publish wizard: Type → Upload (**+ SmartList voice capture**) → animated parsing → Components → Visibility → Licenses → **Pricing (net income calculator)** → **Shipping (profile + customs)** → Manufacturing → Publish
+- `/seller/new` — the wizard branches by product type. Pick **"A physical product"** to see AI Compose → Pricing → Shipping → Preorder; pick **"A digital hardware design"** for the file-parsing flow.
+- `/seller/build` — preorder campaign dashboard: goal progress, demand forecast, partner DFM status, engineering readiness, milestones, and the raw Campaign JSON
+- `/seller/build/manufacturing` — DFM findings + tiered quote with live margin per tier
+- `/seller/build/orders` — cumulative preorder trend, country/variant split, recommended production run
+- `/campaign/pocket-logic-analyzer` — the buyer's view of a live preorder
 - `/seller/payouts` — Stripe vs Wise corridor comparison, ledger, and a pre-publish model
 - `/seller/shipping` — shipping & customs profile, with a live buyer-side preview
 - `/seller/fulfillment` — Shippo rate shopping → buy label → **tracking auto-filled back to the order**

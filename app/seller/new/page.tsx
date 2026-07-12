@@ -4,21 +4,44 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import VoiceCapture from "@/components/VoiceCapture";
+import AIComposer from "@/components/AIComposer";
 import NetIncomeCalculator from "@/components/NetIncomeCalculator";
 import ShippingProfileEditor from "@/components/ShippingProfileEditor";
+import { seedCampaigns } from "@/lib/campaigns";
+import {
+  CampaignType,
+  CAMPAIGN_TYPE_LABEL,
+  CAMPAIGN_TYPE_HELP,
+  CAMPAIGN_TYPE_RISK,
+  estimateMargin,
+} from "@/lib/build";
 
-const STEPS = [
-  "Type",
-  "Upload",
-  "Parsing",
-  "Components",
-  "Visibility",
-  "Licenses",
-  "Pricing",
-  "Shipping",
-  "Manufacturing",
-  "Publish",
-];
+type PType = "physical" | "digital" | "bundle" | "service" | "manufacturing";
+
+// The wizard is not one linear form — the flow is a function of what is being
+// sold. A physical seller must never be walked through license tiers, and a
+// digital seller must never be asked for a parcel weight.
+const FLOWS: Record<PType, string[]> = {
+  physical: ["type", "compose", "pricing", "shipping", "preorder", "publish"],
+  digital: ["type", "upload", "parsing", "components", "visibility", "licenses", "pricing", "publish"],
+  bundle: ["type", "compose", "upload", "parsing", "visibility", "licenses", "pricing", "shipping", "preorder", "publish"],
+  service: ["type", "compose", "pricing", "publish"],
+  manufacturing: ["type", "partner", "publish"],
+};
+
+const STEP_LABEL: Record<string, string> = {
+  type: "Type",
+  compose: "AI Compose",
+  upload: "Upload",
+  parsing: "Parsing",
+  components: "Components",
+  visibility: "Visibility",
+  licenses: "Licenses",
+  pricing: "Pricing",
+  shipping: "Shipping",
+  preorder: "Preorder",
+  publish: "Publish",
+};
 
 const PARSE_STEPS = [
   "Project structure detected",
@@ -30,63 +53,85 @@ const PARSE_STEPS = [
   "47 components matched",
 ];
 
-export default function NewDesignWizard() {
+export default function NewListingWizard() {
   const router = useRouter();
   const { showToast } = useApp();
+  const [ptype, setPtype] = useState<PType>("physical");
   const [step, setStep] = useState(0);
+
+  const flow = FLOWS[ptype];
+  const id = flow[Math.min(step, flow.length - 1)];
+  const next = () => setStep((x) => Math.min(x + 1, flow.length - 1));
+
+  const goodsKind: "digital" | "physical" | "manufacturing" =
+    ptype === "digital" ? "digital" : ptype === "manufacturing" ? "manufacturing" : "physical";
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-xl font-bold text-navy mb-1">Publish a digital hardware design</h1>
+      <h1 className="text-xl font-bold text-navy mb-1">Create a listing</h1>
       <p className="text-muted text-sm mb-5">
         This wizard sits on top of the existing product-create form — the same seller, store and Stripe Connect account
-        you already have.
+        you already have. The steps you get depend on what you are selling.
       </p>
 
       {/* Stepper */}
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
-        {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center shrink-0">
+        {flow.map((sid, i) => (
+          <div key={sid} className="flex items-center shrink-0">
             <button
               onClick={() => i <= step && setStep(i)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
                 i === step ? "bg-teal text-white" : i < step ? "text-teal-dark" : "text-muted"
               }`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                i < step ? "bg-teal text-white" : i === step ? "bg-white/20" : "bg-panel"
-              }`}>
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  i < step ? "bg-teal text-white" : i === step ? "bg-white/20" : "bg-panel"
+                }`}
+              >
                 {i < step ? "✓" : i + 1}
               </span>
-              {s}
+              {STEP_LABEL[sid]}
             </button>
-            {i < STEPS.length - 1 && <span className="text-line mx-0.5">›</span>}
+            {i < flow.length - 1 && <span className="text-line mx-0.5">›</span>}
           </div>
         ))}
       </div>
 
       <div className="t-card p-5 bg-white">
-        {step === 0 && <StepType onNext={() => setStep(1)} />}
-        {step === 1 && <StepUpload onNext={() => setStep(2)} />}
-        {step === 2 && <StepParsing onNext={() => setStep(3)} />}
-        {step === 3 && <StepComponents onNext={() => setStep(4)} />}
-        {step === 4 && <StepVisibility onNext={() => setStep(5)} />}
-        {step === 5 && <StepLicenses onNext={() => setStep(6)} />}
-        {step === 6 && <StepPricing onNext={() => setStep(7)} />}
-        {step === 7 && <StepShipping onNext={() => setStep(8)} />}
-        {step === 8 && <StepManufacturing onNext={() => setStep(9)} />}
-        {step === 9 && (
+        {id === "type" && (
+          <StepType
+            choice={ptype}
+            setChoice={(p) => {
+              setPtype(p);
+              setStep(0);
+            }}
+            onNext={next}
+          />
+        )}
+        {id === "compose" && <StepCompose ptype={ptype} onNext={next} />}
+        {id === "upload" && <StepUpload onNext={next} />}
+        {id === "parsing" && <StepParsing onNext={next} />}
+        {id === "components" && <StepComponents onNext={next} />}
+        {id === "visibility" && <StepVisibility onNext={next} />}
+        {id === "licenses" && <StepLicenses onNext={next} />}
+        {id === "pricing" && <StepPricing kind={goodsKind} onNext={next} />}
+        {id === "shipping" && <StepShipping onNext={next} />}
+        {id === "preorder" && <StepPreorder onNext={next} />}
+        {id === "partner" && <StepPartner onNext={next} />}
+        {id === "publish" && (
           <StepPublish
+            ptype={ptype}
             onPublish={() => {
-              showToast("Design published (simulated)");
+              showToast("Listing published (simulated)");
               router.push("/seller");
             }}
           />
         )}
       </div>
 
-      {step > 0 && step < 7 && (
-        <button className="text-sm text-muted mt-3 hover:text-slate" onClick={() => setStep((s) => s - 1)}>
+      {step > 0 && (
+        <button className="text-sm text-muted mt-3 hover:text-slate" onClick={() => setStep((x) => x - 1)}>
           ← Back
         </button>
       )}
@@ -94,12 +139,19 @@ export default function NewDesignWizard() {
   );
 }
 
-function StepType({ onNext }: { onNext: () => void }) {
-  const [choice, setChoice] = useState("digital");
-  const opts = [
-    ["physical", "A physical product", "Standard Tindie flow — unchanged."],
-    ["digital", "A digital hardware design", "Sell KiCad files under a license."],
-    ["bundle", "A physical + digital bundle", "Ship a board and grant the files."],
+function StepType({
+  choice,
+  setChoice,
+  onNext,
+}: {
+  choice: PType;
+  setChoice: (p: PType) => void;
+  onNext: () => void;
+}) {
+  const opts: [PType, string, string][] = [
+    ["physical", "A physical product", "A board you build and ship. AI compose, Stripe payouts, Shippo labels, optional preorder."],
+    ["digital", "A digital hardware design", "Sell KiCad files under a license. No shipping, instant delivery."],
+    ["bundle", "A physical + digital bundle", "Ship a board and grant the files with it."],
     ["service", "A professional design service", "Review, migration, custom work."],
     ["manufacturing", "A manufacturing service", "For approved partner accounts."],
   ];
@@ -114,7 +166,13 @@ function StepType({ onNext }: { onNext: () => void }) {
               choice === val ? "border-teal bg-teal-light/40" : "border-line hover:border-teal/50"
             }`}
           >
-            <input type="radio" name="ptype" checked={choice === val} onChange={() => setChoice(val)} className="mt-1 accent-teal" />
+            <input
+              type="radio"
+              name="ptype"
+              checked={choice === val}
+              onChange={() => setChoice(val)}
+              className="mt-1 accent-teal"
+            />
             <div>
               <div className="font-semibold text-navy text-sm">{title}</div>
               <div className="text-xs text-muted">{d}</div>
@@ -122,8 +180,234 @@ function StepType({ onNext }: { onNext: () => void }) {
           </label>
         ))}
       </div>
-      <button className="t-btn-primary mt-4" onClick={onNext} disabled={choice !== "digital"}>
-        {choice === "digital" ? "Continue" : "Select digital design to continue"}
+      <div className="mt-4 rounded-lg bg-panel border border-line p-3 text-xs text-slate">
+        Your flow: {FLOWS[choice].map((s) => STEP_LABEL[s]).join(" → ")}
+      </div>
+      <button className="t-btn-primary mt-4" onClick={onNext}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI Compose — voice + text + photos + engineering files → Tindie listing fields
+// ---------------------------------------------------------------------------
+function StepCompose({ ptype, onNext }: { ptype: PType; onNext: () => void }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div>
+      <h2 className="font-semibold text-navy mb-1">
+        Describe your product <span className="t-tag bg-cta text-white ml-1">SmartList</span>
+      </h2>
+      <p className="text-sm text-muted mb-4">
+        {ptype === "service"
+          ? "Describe the service you offer — scope, turnaround, what the client receives."
+          : "Talk, type, drop in photos, or hand over the design files. Any combination works; more sources means higher confidence. The output is your existing Tindie listing form, filled in."}
+      </p>
+      <AIComposer onComposed={() => setDone(true)} />
+      <button className="t-btn-primary mt-5 disabled:opacity-40" disabled={!done} onClick={onNext}>
+        Continue to pricing
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Preorder — the ezPLM Build module, folded in
+// ---------------------------------------------------------------------------
+function StepPreorder({ onNext }: { onNext: () => void }) {
+  const c = seedCampaigns[0];
+  const [enabled, setEnabled] = useState(true);
+  const [type, setType] = useState<CampaignType>("batch_build");
+  const [minUnits, setMinUnits] = useState(50);
+  const [price, setPrice] = useState(79);
+  const [earlyBird, setEarlyBird] = useState(true);
+  const [ebPrice, setEbPrice] = useState(69);
+  const [prodQty, setProdQty] = useState(100);
+
+  const margin = estimateMargin(price, prodQty, c.review);
+  const risk = CAMPAIGN_TYPE_RISK[type];
+
+  if (!enabled) {
+    return (
+      <div>
+        <h2 className="font-semibold text-navy mb-1">Preorder (optional)</h2>
+        <p className="text-sm text-muted mb-4">
+          Selling from stock — no preorder campaign. You can start one later from the Build tab.
+        </p>
+        <button className="t-btn-ghost" onClick={() => setEnabled(true)}>
+          Actually, run a preorder
+        </button>
+        <button className="t-btn-primary ml-2" onClick={onNext}>
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="font-semibold text-navy mb-1">Preorder campaign</h2>
+      <p className="text-sm text-muted mb-4">
+        Find out whether the market wants this <em>before</em> you spend money on a production run. The partner&apos;s
+        tiered quote turns demand into a real margin number at each volume.
+      </p>
+
+      {/* Campaign type — the risk ladder */}
+      <label className="t-label">Campaign type</label>
+      <div className="space-y-2">
+        {(["interest_check", "batch_build", "rolling_preorder"] as CampaignType[]).map((t) => (
+          <label
+            key={t}
+            className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition ${
+              type === t ? "border-teal bg-teal-light/40" : "border-line hover:border-teal/50"
+            }`}
+          >
+            <input type="radio" checked={type === t} onChange={() => setType(t)} className="mt-1 accent-teal" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-navy text-sm">{CAMPAIGN_TYPE_LABEL[t]}</span>
+                <span className={`t-tag ${CAMPAIGN_TYPE_RISK[t].tone}`}>{CAMPAIGN_TYPE_RISK[t].label}</span>
+              </div>
+              <div className="text-xs text-muted mt-0.5">{CAMPAIGN_TYPE_HELP[t]}</div>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-3 rounded-lg bg-panel border border-line p-3 text-xs text-slate leading-relaxed">
+        <strong className="text-navy">How the money is actually held.</strong> A Batch Build authorises the card and
+        captures only when the goal is met. Stripe authorisations expire after about 7 days, so a campaign running
+        longer uses a saved payment method plus an off-session charge at goal, not a long-lived hold. That constraint is
+        why the goal deadline and the capture mechanism have to be designed together — it is not a UI detail.
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 mt-4">
+        <div>
+          <label className="t-label">Minimum goal (units)</label>
+          <input className="t-input" type="number" value={minUnits} onChange={(e) => setMinUnits(+e.target.value)} />
+          <p className="t-hint">Production does not start below this. Nothing is captured if it is not reached.</p>
+        </div>
+        <div>
+          <label className="t-label">Unit price (USD)</label>
+          <input className="t-input" type="number" value={price} onChange={(e) => setPrice(+e.target.value)} />
+        </div>
+        <div>
+          <label className="t-label">Planned production quantity</label>
+          <input className="t-input" type="range" min={50} max={200} step={10} value={prodQty} onChange={(e) => setProdQty(+e.target.value)} />
+          <p className="t-hint">
+            {prodQty} units → quote tier {margin.tierUsed} @ ${margin.manufacturingCost.toFixed(2)}/unit ·{" "}
+            {margin.leadTimeDays} day lead time
+          </p>
+        </div>
+        <div>
+          <label className="t-label">Early-bird price</label>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={earlyBird} onChange={() => setEarlyBird((v) => !v)} className="accent-teal" />
+            <input
+              className="t-input"
+              type="number"
+              value={ebPrice}
+              disabled={!earlyBird}
+              onChange={(e) => setEbPrice(+e.target.value)}
+            />
+          </div>
+          <p className="t-hint">First 25 backers. Early-bird margin: ${(margin.profit - (price - ebPrice)).toFixed(2)}/unit.</p>
+        </div>
+      </div>
+
+      {/* Live margin from the partner's tiered quote */}
+      <div className="mt-4 border border-line rounded-lg overflow-hidden">
+        <div className="px-4 py-2 bg-panel border-b border-line text-sm font-semibold text-navy flex items-center gap-2">
+          Margin at {prodQty} units
+          <span className="t-tag bg-teal-light text-teal-dark ml-auto">{c.review.partnerName} quote</span>
+        </div>
+        <div className="p-4 grid sm:grid-cols-2 gap-4">
+          <dl className="text-sm space-y-1">
+            <MRow k="Unit price" v={margin.unitPrice} />
+            <MRow k="− Manufacturing" v={-margin.manufacturingCost} />
+            <MRow k="− Platform fee (5%)" v={-margin.platformFee} />
+            <MRow k="− Payment cost" v={-margin.paymentFee} />
+            <MRow k="− Logistics" v={-margin.logistics} />
+            <div
+              className={`flex justify-between border-t pt-1.5 mt-1.5 font-bold ${
+                margin.profit < 0 ? "border-danger text-danger" : "border-navy text-navy"
+              }`}
+            >
+              <dt>Profit / unit</dt>
+              <dd>${margin.profit.toFixed(2)}</dd>
+            </div>
+          </dl>
+          <div>
+            <div className="text-xs text-muted mb-1">Margin</div>
+            <div
+              className={`text-3xl font-bold ${
+                margin.marginPct >= 35 ? "text-ok" : margin.marginPct >= 15 ? "text-tag" : "text-danger"
+              }`}
+            >
+              {margin.marginPct.toFixed(1)}%
+            </div>
+            <div className="text-xs text-muted mt-2">
+              Total profit at {prodQty} units:{" "}
+              <strong className="text-navy">${(margin.profit * prodQty).toFixed(0)}</strong>
+            </div>
+            {margin.profit < 0 && (
+              <div className="mt-2 rounded-md bg-red-50 border border-red-200 px-2.5 py-2 text-xs text-red-700 font-semibold">
+                ⚠ This campaign loses money at every unit sold. Raise the price or produce a larger batch.
+              </div>
+            )}
+            <p className="text-[11px] text-muted mt-2 leading-relaxed">
+              Drag the production quantity: at 200 units the tier drops to $29.40 and the margin changes shape. This is
+              exactly the decision a preorder exists to inform.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className={`mt-3 text-xs px-3 py-2 rounded-md ${risk.tone}`}>
+        Buyer-facing risk statement: <strong>{risk.label}.</strong> This is shown on the campaign page, not buried in
+        terms.
+      </p>
+
+      <div className="mt-4 flex gap-2">
+        <button className="t-btn-primary" onClick={onNext}>
+          Continue
+        </button>
+        <button className="t-btn-ghost" onClick={() => setEnabled(false)}>
+          No preorder — sell from stock
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MRow({ k, v }: { k: string; v: number }) {
+  return (
+    <div className="flex justify-between">
+      <dt className="text-muted">{k}</dt>
+      <dd>
+        {v < 0 ? "-" : ""}${Math.abs(v).toFixed(2)}
+      </dd>
+    </div>
+  );
+}
+
+function StepPartner({ onNext }: { onNext: () => void }) {
+  return (
+    <div>
+      <h2 className="font-semibold text-navy mb-1">Manufacturing service listing</h2>
+      <p className="text-sm text-muted mb-4">
+        Manufacturing services are listed by approved partner accounts and are configured in the Partner console, not
+        here — capabilities, regions, lead times and commission model are partner-record fields that feed the routing
+        engine.
+      </p>
+      <div className="rounded-lg bg-panel border border-line p-4 text-sm text-slate">
+        Your account is not a partner account. Apply through the partner programme, or switch the role selector to
+        &ldquo;Partner&rdquo; to see that console.
+      </div>
+      <button className="t-btn-primary mt-4" onClick={onNext}>
+        Continue anyway (demo)
       </button>
     </div>
   );
@@ -195,7 +479,7 @@ function StepUpload({ onNext }: { onNext: () => void }) {
 // ---------------------------------------------------------------------------
 // Pricing — the seller sees the real cost stack before naming a price.
 // ---------------------------------------------------------------------------
-function StepPricing({ onNext }: { onNext: () => void }) {
+function StepPricing({ kind, onNext }: { kind: "digital" | "physical" | "manufacturing"; onNext: () => void }) {
   const { shipProfile } = useApp();
   return (
     <div>
@@ -205,7 +489,7 @@ function StepPricing({ onNext }: { onNext: () => void }) {
         outbound label all land on the seller. Model them here, before publishing — the wizard blocks a publish that
         would lose money on every unit.
       </p>
-      <NetIncomeCalculator initialPrice={19.99} profile={shipProfile} />
+      <NetIncomeCalculator kind={kind} initialPrice={19.99} profile={shipProfile} />
       <div className="mt-4 rounded-lg bg-teal-light/50 border border-teal/30 p-3 text-xs text-teal-dark leading-relaxed">
         <strong>Two things worth trying.</strong> Switch the seller region to China — the corridor flips to Wise and
         the cost structure changes shape entirely. Then switch the goods type to digital and drag the cart size: the
@@ -413,16 +697,27 @@ function StepManufacturing({ onNext }: { onNext: () => void }) {
   );
 }
 
-function StepPublish({ onPublish }: { onPublish: () => void }) {
+function StepPublish({ ptype, onPublish }: { ptype: PType; onPublish: () => void }) {
   const [ip, setIp] = useState(false);
-  const checks = [
-    ["Product completeness", "100%", true],
-    ["File completeness", "All core files present", true],
-    ["BOM match rate", "94%", true],
-    ["Preview status", "Rendered", true],
-    ["License status", "3 tiers configured", true],
-    ["Manufacturing readiness", "Enabled · Gerbers present", true],
-  ] as const;
+  const digitalish = ptype === "digital" || ptype === "bundle";
+  const physicalish = ptype === "physical" || ptype === "bundle";
+  const checks: [string, string, boolean][] = [
+    ["Listing completeness", "All required Tindie fields filled", true],
+    ["Low-confidence fields", "0 remaining unconfirmed", true],
+    ...(digitalish
+      ? ([
+          ["File completeness", "All core files present", true],
+          ["BOM match rate", "94%", true],
+          ["License status", "3 tiers configured", true],
+        ] as [string, string, boolean][])
+      : []),
+    ...(physicalish
+      ? ([
+          ["Shipping profile", "Bound · 42 g · HS 8517.62", true],
+          ["Net income at list price", "Positive across all corridors", true],
+        ] as [string, string, boolean][])
+      : []),
+  ];
   return (
     <div>
       <h2 className="font-semibold text-navy mb-3">Pre-publish check</h2>
