@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
+import { validateDraft } from "@/lib/draft";
 import VoiceCapture from "@/components/VoiceCapture";
 import AIComposer from "@/components/AIComposer";
 import NetIncomeCalculator from "@/components/NetIncomeCalculator";
@@ -23,19 +24,25 @@ type PType = "physical" | "digital" | "bundle" | "service" | "manufacturing";
 // digital seller must never be asked for a parcel weight.
 const FLOWS: Record<PType, string[]> = {
   physical: ["type", "compose", "pricing", "shipping", "preorder", "publish"],
-  digital: ["type", "upload", "parsing", "components", "visibility", "licenses", "pricing", "publish"],
-  bundle: ["type", "compose", "upload", "parsing", "visibility", "licenses", "pricing", "shipping", "preorder", "publish"],
+  // Digital: engineering trust FIRST. A buyer of a KiCad project does not care
+  // how well the AI wrote the description — they care whether the files open,
+  // whether DRC passes, whether the BOM resolves, and whether anyone has ever
+  // actually fabricated the thing. AI assists at the description step; it is
+  // not the headline. Upload → Analyze → Fix → Verify → Preview → License → Sell.
+  digital: ["type", "upload", "parsing", "components", "verify", "visibility", "licenses", "pricing", "publish"],
+  bundle: ["type", "upload", "parsing", "verify", "visibility", "licenses", "compose", "pricing", "shipping", "preorder", "publish"],
   service: ["type", "compose", "pricing", "publish"],
   manufacturing: ["type", "partner", "publish"],
 };
 
 const STEP_LABEL: Record<string, string> = {
   type: "Type",
-  compose: "AI Compose",
+  compose: "Describe (AI-assisted)",
   upload: "Upload",
-  parsing: "Parsing",
-  components: "Components",
-  visibility: "Visibility",
+  parsing: "Analyze",
+  components: "Fix BOM",
+  verify: "Verify",
+  visibility: "Preview & scope",
   licenses: "Licenses",
   pricing: "Pricing",
   shipping: "Shipping",
@@ -55,7 +62,7 @@ const PARSE_STEPS = [
 
 export default function NewListingWizard() {
   const router = useRouter();
-  const { showToast } = useApp();
+  const { showToast, draft, publishProduct, resetDraft } = useApp();
   const [ptype, setPtype] = useState<PType>("physical");
   const [step, setStep] = useState(0);
 
@@ -73,6 +80,8 @@ export default function NewListingWizard() {
         This wizard sits on top of the existing product-create form — the same seller, store and Stripe Connect account
         you already have. The steps you get depend on what you are selling.
       </p>
+
+      <DraftBar />
 
       {/* Stepper */}
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
@@ -113,6 +122,7 @@ export default function NewListingWizard() {
         {id === "upload" && <StepUpload onNext={next} />}
         {id === "parsing" && <StepParsing onNext={next} />}
         {id === "components" && <StepComponents onNext={next} />}
+        {id === "verify" && <StepVerify onNext={next} />}
         {id === "visibility" && <StepVisibility onNext={next} />}
         {id === "licenses" && <StepLicenses onNext={next} />}
         {id === "pricing" && <StepPricing kind={goodsKind} onNext={next} />}
@@ -123,7 +133,43 @@ export default function NewListingWizard() {
           <StepPublish
             ptype={ptype}
             onPublish={() => {
-              showToast("Listing published (simulated)");
+              // The draft becomes a LIVE listing: it appears in the buyer
+              // marketplace immediately and persists in the demo DB.
+              const id = "dp_pub_" + Math.random().toString(36).slice(2, 7);
+              const isPhysical = ptype === "physical" || ptype === "bundle";
+              publishProduct({
+                id,
+                slug: (draft.title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + id.slice(-4),
+                title: draft.title || "Untitled listing",
+                productType: ptype === "bundle" ? "bundle" : ptype === "physical" ? "physical" : "digital",
+                price: draft.price || (isPhysical ? 29 : undefined),
+                stock: isPhysical ? draft.stock || 25 : undefined,
+                weightG: isPhysical ? draft.weightG || 100 : undefined,
+                shipProfileId: isPhysical ? "sp_small" : undefined,
+                handlingDays: isPhysical ? "1–3 days" : undefined,
+                tagline: draft.description?.slice(0, 140) || "Newly published listing.",
+                category: ptype === "digital" ? "kicad_full_project" : "complete_design",
+                sellerId: "s_sulab",
+                sellerName: "SuLab",
+                sellerCountry: "US",
+                kicadVersion: ptype === "digital" ? "KiCad 8.0" : "—",
+                verifyLevel: draft.fabricated && draft.drc === "pass" ? 2 : draft.drc === "pass" ? 1 : 0,
+                downloads: 0,
+                timesManufactured: 0,
+                updatedAt: new Date().toISOString().slice(0, 10),
+                layers: 2,
+                sizeMm: "—",
+                heroThumb: "from-slate-600 to-navy",
+                makeEnabled: ptype !== "physical",
+                allowFullFileToPartner: false,
+                rating: 0,
+                reviewCount: 0,
+                supportResponse: "~48 hours",
+                licenses: [],
+                bom: [],
+                files: [],
+              });
+              resetDraft();
               router.push("/seller");
             }}
           />
@@ -744,6 +790,143 @@ function StepPublish({ ptype, onPublish }: { ptype: PType; onPublish: () => void
       <button className="t-btn-cta mt-4" onClick={onPublish} disabled={!ip}>
         Publish design
       </button>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// VERIFY — the step that actually decides whether a buyer trusts this listing.
+//
+// The AI-written description is worth nothing to a KiCad buyer if the design has
+// never been through DRC. This is the highest-leverage screen in the digital
+// flow, so it gets its own step rather than being a checkbox at the end.
+// ---------------------------------------------------------------------------
+function StepVerify({ onNext }: { onNext: () => void }) {
+  const { draft, patchDraft, markStepComplete } = useApp();
+  const [drc, setDrc] = useState<"pass" | "fail" | "not_run">("pass");
+  const [erc, setErc] = useState<"pass" | "fail" | "not_run">("pass");
+  const [fabricated, setFabricated] = useState(false);
+  const [photo, setPhoto] = useState(false);
+  const [firmware, setFirmware] = useState(false);
+  const [testLog, setTestLog] = useState(false);
+
+  // Verification LEVEL is earned by evidence, not claimed by a checkbox.
+  const level =
+    fabricated && photo && (testLog || firmware) && drc === "pass" && erc === "pass"
+      ? 3
+      : fabricated && drc === "pass"
+      ? 2
+      : drc === "pass" && erc === "pass"
+      ? 1
+      : 0;
+
+  const LEVELS = [
+    { n: 0, name: "Unverified", blurb: "Files upload and parse. Nothing else is claimed." },
+    { n: 1, name: "Checks pass", blurb: "DRC and ERC pass in KiCad. The design is manufacturable on paper." },
+    { n: 2, name: "Fabricated", blurb: "The seller has had this board made at least once." },
+    { n: 3, name: "Proven", blurb: "Fabricated, photographed, and either firmware or a test log is attached." },
+  ];
+
+  return (
+    <div>
+      <h2 className="font-bold text-navy mb-1">Verify the design</h2>
+      <p className="text-sm text-muted mb-4">
+        This is what a buyer of a KiCad project actually reads. A good description does not make an unfabricated design
+        safe to build — so the listing badge is earned from evidence below, and cannot be typed in.
+      </p>
+
+      <div className="space-y-2 mb-5">
+        <Check label="DRC passes" hint="Design rule check clean in KiCad." on={drc === "pass"} set={(v) => setDrc(v ? "pass" : "not_run")} />
+        <Check label="ERC passes" hint="Electrical rule check clean — no unconnected pins, no conflicting drivers." on={erc === "pass"} set={(v) => setErc(v ? "pass" : "not_run")} />
+        <Check label="I have fabricated this design" hint="At least one physical board has been made from these exact files." on={fabricated} set={setFabricated} />
+        <Check label="Photo of the assembled board attached" hint="The single most persuasive artifact on the whole listing." on={photo} set={setPhoto} />
+        <Check label="Firmware / example code included" on={firmware} set={setFirmware} />
+        <Check label="Test log or measurement data attached" on={testLog} set={setTestLog} />
+      </div>
+
+      <div className="t-card p-4 mb-5">
+        <div className="text-xs uppercase tracking-wide text-muted mb-2">Verification level (earned)</div>
+        <div className="space-y-1.5">
+          {LEVELS.map((l) => (
+            <div
+              key={l.n}
+              className={`flex items-start gap-3 rounded-lg px-3 py-2 border ${
+                l.n === level ? "border-teal bg-teal-light/50" : "border-line opacity-50"
+              }`}
+            >
+              <span className="font-bold text-navy text-sm shrink-0">L{l.n}</span>
+              <div>
+                <div className="font-semibold text-navy text-sm">{l.name}</div>
+                <div className="text-xs text-muted">{l.blurb}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {level < 2 && (
+          <p className="t-hint mt-3">
+            Buyers filter on L2+. An unfabricated design still sells — it is just listed honestly as one, and priced
+            accordingly.
+          </p>
+        )}
+      </div>
+
+      <button
+        className="t-btn-primary"
+        onClick={() => {
+          patchDraft({ drc, erc, fabricated });
+          markStepComplete("verify");
+          onNext();
+        }}
+      >
+        Continue — saved to draft {draft.id}
+      </button>
+    </div>
+  );
+}
+
+function Check({
+  label,
+  hint,
+  on,
+  set,
+}: {
+  label: string;
+  hint?: string;
+  on: boolean;
+  set: (v: boolean) => void;
+}) {
+  return (
+    <label
+      className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition ${
+        on ? "border-teal bg-teal-light/40" : "border-line hover:border-teal/50"
+      }`}
+    >
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} className="mt-0.5 accent-teal" />
+      <div>
+        <div className="font-medium text-navy text-sm">{label}</div>
+        {hint && <div className="text-xs text-muted">{hint}</div>}
+      </div>
+    </label>
+  );
+}
+
+
+/** The draft is real: one object, autosaved, validated as a whole before publish. */
+function DraftBar() {
+  const { draft } = useApp();
+  const issues = validateDraft(draft);
+  const errors = issues.filter((i) => i.severity === "error").length;
+  return (
+    <div className="flex items-center gap-2 flex-wrap text-xs mb-4 rounded-lg border border-line bg-panel/60 px-3 py-2">
+      <span className="font-mono text-slate">{draft.id}</span>
+      <span className="t-tag bg-white border border-line text-slate">{draft.status}</span>
+      <span className="text-muted">
+        autosaved {new Date(draft.lastSavedAt).toLocaleTimeString()} · {draft.completedSteps.length} step(s) complete
+      </span>
+      <span className={`t-tag ml-auto ${errors ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
+        {errors ? `${errors} blocker(s) before publish` : "ready to publish"}
+      </span>
     </div>
   );
 }

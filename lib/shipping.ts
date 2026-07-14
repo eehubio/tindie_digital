@@ -84,6 +84,9 @@ export const DEST_COUNTRIES: Record<string, DestCountry> = {
 // net-income calculator, the buyer checkout and the fulfillment screen.
 // ---------------------------------------------------------------------------
 export interface ShipProfile {
+  /** Multiple profiles — a 42 g module and a 600 g kit cannot share one weight. */
+  id: string;
+  name: string;
   originLabel: string;
   weightG: number;
   hsCode: string;
@@ -97,6 +100,8 @@ export interface ShipProfile {
 }
 
 export const defaultShipProfile: ShipProfile = {
+  id: "sp_small",
+  name: "Small module (padded envelope)",
   originLabel: "United States",
   weightG: 42,
   hsCode: "8517.62",
@@ -108,6 +113,23 @@ export const defaultShipProfile: ShipProfile = {
   iossRegistered: true,
   handlingDays: "1–3 days",
 };
+
+export const kitShipProfile: ShipProfile = {
+  id: "sp_kit",
+  name: "Boxed kit (small parcel)",
+  originLabel: "United States",
+  weightG: 620,
+  hsCode: "9023.00",
+  customsDesc: "Electronics education kit (instrument, probes, case)",
+  mode: "weight",
+  flatRate: 14.0,
+  combined: true,
+  blockedZones: [],
+  iossRegistered: true,
+  handlingDays: "2–4 days",
+};
+
+export const seedShipProfiles: ShipProfile[] = [defaultShipProfile, kitShipProfile];
 
 export function quoteShipping(zoneKey: string, method: ShipMethod, weightG: number, profile?: ShipProfile) {
   if (profile?.mode === "flat") return r2(profile.flatRate);

@@ -10,16 +10,24 @@ const CATEGORY_LABEL: Record<string, string> = {
   reference_design: "Design Service",
 };
 
+const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
+  digital: { label: "Digital files", cls: "bg-white/90 text-slate" },
+  physical: { label: "Physical product", cls: "bg-teal text-white" },
+  bundle: { label: "Kit + Files bundle", cls: "bg-indigo-600 text-white" },
+};
+
 export default function ProductCard({ p }: { p: DigitalProduct }) {
-  const from = Math.min(...p.licenses.map((l) => l.price));
+  const from = p.price ?? (p.licenses.length ? Math.min(...p.licenses.map((l) => l.price)) : 0);
+  const isPreorder = !!p.preorderCampaignSlug;
+  const lowStock = p.productType !== "digital" && (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 20;
   return (
     <Link
       href={`/product/${p.slug}`}
       className="group block bg-white border border-line rounded-lg overflow-hidden hover:shadow-card transition"
     >
       <div className={`h-36 bg-gradient-to-br ${p.heroThumb} relative`}>
-        <span className="absolute top-2 left-2 t-tag bg-white/90 text-slate">
-          {CATEGORY_LABEL[p.category] ?? "Digital Design"}
+        <span className={`absolute top-2 left-2 t-tag ${TYPE_BADGE[p.productType].cls}`}>
+          {isPreorder ? "Preorder" : TYPE_BADGE[p.productType].label}
         </span>
         {p.verifyLevel > 0 && (
           <span className="absolute top-2 right-2">
@@ -36,14 +44,21 @@ export default function ProductCard({ p }: { p: DigitalProduct }) {
         <div className="flex items-center justify-between mt-3">
           <Stars rating={p.rating} count={p.reviewCount} />
           <span className="text-sm">
-            <span className="text-muted">from </span>
+            {p.productType === "digital" && <span className="text-muted">from </span>}
             <span className="font-bold text-teal-dark">${from}</span>
           </span>
         </div>
-        {(p.timesManufactured > 0 || p.downloads > 0) && (
+        {(p.timesManufactured > 0 || p.downloads > 0 || p.productType !== "digital") && (
           <div className="mt-2 pt-2 border-t border-line flex gap-3 text-[11px] text-muted">
             {p.downloads > 0 && <span>{p.downloads} downloads</span>}
             {p.timesManufactured > 0 && <span>Made {p.timesManufactured}×</span>}
+            {isPreorder ? (
+              <span className="text-tag font-semibold ml-auto">37/50 committed</span>
+            ) : p.productType !== "digital" ? (
+              <span className={`ml-auto ${lowStock ? "text-cta font-semibold" : ""}`}>
+                {(p.stock ?? 0) > 0 ? `${p.stock} in stock` : "Out of stock"}
+              </span>
+            ) : null}
           </div>
         )}
       </div>

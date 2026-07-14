@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { products } from "@/lib/mock";
+
 import ProductCard from "@/components/ProductCard";
+import { useApp } from "@/lib/store";
 
 const CATEGORIES = [
   ["all", "All designs"],
@@ -12,6 +13,7 @@ const CATEGORIES = [
 ];
 
 export default function SearchPage() {
+  const products = useApp((st) => st.allProducts)();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { useApp } from "@/lib/store";
 import { Role } from "@/lib/types";
 import { Toast } from "./ui";
@@ -22,11 +23,12 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     nav: [
       { href: "/seller", label: "Dashboard" },
       { href: "/seller/new", label: "New Listing" },
+      { href: "/seller/orders-action", label: "Orders" },
+      { href: "/seller/messages", label: "Messages" },
       { href: "/seller/build", label: "Preorder" },
-      { href: "/seller/payouts", label: "Payouts" },
       { href: "/seller/shipping", label: "Shipping" },
       { href: "/seller/fulfillment", label: "Fulfillment" },
-      { href: "/seller/analytics", label: "Analytics" },
+      { href: "/seller/payouts", label: "Payouts" },
     ],
   },
   partner: {
@@ -41,6 +43,8 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     href: "/admin",
     nav: [
       { href: "/admin", label: "Overview" },
+      { href: "/admin/sellers", label: "Sellers" },
+      { href: "/admin/reviews", label: "Product Review" },
       { href: "/admin/partners", label: "Partners" },
       { href: "/admin/disputes", label: "Disputes" },
       { href: "/admin/ip", label: "IP Complaints" },
@@ -50,7 +54,15 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
   },
 };
 
+function useRehydrate() {
+  // skipHydration is on to keep SSR markup deterministic; hydrate the demo DB here.
+  useEffect(() => {
+    useApp.persist.rehydrate();
+  }, []);
+}
+
 export default function Shell({ children }: { children: React.ReactNode }) {
+  useRehydrate();
   const { role, setRole, cart } = useApp();
   const pathname = usePathname();
   const nav = ROLE_HOME[role].nav;

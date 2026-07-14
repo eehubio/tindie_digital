@@ -99,7 +99,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex justify-between font-semibold border-t border-line pt-1 mt-1">
                   <dt>Stripe as % of goods</dt>
-                  <dd className="text-danger">{lone.stripeFeePctOfGross.toFixed(1)}%</dd>
+                  <dd className="text-danger">{lone.stripeFeePctOfGoods.toFixed(1)}%</dd>
                 </div>
               </dl>
             </div>
@@ -122,7 +122,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex justify-between font-semibold border-t border-teal/30 pt-1 mt-1">
                   <dt>Stripe as % of goods</dt>
-                  <dd className="text-teal-dark">{bundled.stripeFeePctOfGross.toFixed(1)}%</dd>
+                  <dd className="text-teal-dark">{bundled.stripeFeePctOfGoods.toFixed(1)}%</dd>
                 </div>
               </dl>
             </div>

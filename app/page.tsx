@@ -1,10 +1,12 @@
 "use client";
 
-import { products } from "@/lib/mock";
+
 import ProductCard from "@/components/ProductCard";
+import { useApp } from "@/lib/store";
 import Link from "next/link";
 
 export default function Home() {
+  const products = useApp((st) => st.allProducts)();
   return (
     <div className="space-y-8">
       {/* Hero — states the thesis: design → make → sell */}

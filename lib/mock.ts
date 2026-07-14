@@ -1,4 +1,8 @@
 import {
+  ProductQuestion,
+  VersionNote,
+  SellerApplication,
+  ProductSubmission,
   DigitalProduct,
   ServicePartner,
   QuoteRequest,
@@ -12,12 +16,18 @@ import { Fulfillment } from "./shipping";
 
 // Platform payment config — in production this comes from the admin panel / DB.
 export const paymentConfig: PaymentConfig = {
+  // Tindie's classic behaviour: the seller carries the processing cost. Made
+  // explicit here rather than left as a gap in the ledger.
+  feeAllocation: "seller_pays",
+  taxRate: 0,
+  servicePlatformFeePercent: 0.12,
   digitalMinimumWithoutFee: 10,
   smallOrderFee: 0.49,
   minimumDigitalPrice: 2,
   stripeFixedFee: 0.3,
   stripePercent: 0.029,
   platformFeePercent: 0.1,
+  platformFeePercentPhysical: 0.05,
 };
 
 // ---------------------------------------------------------------------------
@@ -47,6 +57,23 @@ export const partners: ServicePartner[] = [
     completedOrders: 1284,
     disputeRate: 0.012,
     onTimeRate: 0.96,
+    // Hard capability limits — used to EXCLUDE, never to score.
+    maxLayers: 16,
+    materials: ["FR-4", "Aluminium", "Rogers", "Flex"],
+    minTraceMm: 0.075,
+    minQty: 5,
+    maxQty: 100000,
+    currencies: ["USD", "CNY", "EUR"],
+    packages: ["THT", "0402", "0201", "QFN", "BGA"],
+    // Operational readiness — all of it must hold before a buyer sees them.
+    contractStatus: "signed",
+    ndaStatus: "signed",
+    dataProcessingAgreement: "signed",
+    payoutReady: true,
+    apiHealth: "healthy",
+    acceptingNewOrders: true,
+    capacityStatus: "normal",
+    lastCapabilityVerifiedAt: "2026-06-28",
     status: "active",
     featured: true,
     strategic: true,
@@ -72,6 +99,23 @@ export const partners: ServicePartner[] = [
     completedOrders: 342,
     disputeRate: 0.006,
     onTimeRate: 0.98,
+    // Hard capability limits — used to EXCLUDE, never to score.
+    maxLayers: 99,
+    materials: ["FR-4", "Rogers", "Aluminium", "Flex"],
+    minTraceMm: 0.05,
+    minQty: 1,
+    maxQty: 1000000,
+    currencies: ["USD", "EUR"],
+    packages: ["THT", "0402", "0201", "QFN", "BGA"],
+    // Operational readiness — all of it must hold before a buyer sees them.
+    contractStatus: "signed",
+    ndaStatus: "signed",
+    dataProcessingAgreement: "signed",
+    payoutReady: true,
+    apiHealth: "healthy",
+    acceptingNewOrders: true,
+    capacityStatus: "normal",
+    lastCapabilityVerifiedAt: "2026-07-02",
     status: "active",
     featured: true,
     strategic: true,
@@ -99,6 +143,23 @@ export const partners: ServicePartner[] = [
     completedOrders: 87,
     disputeRate: 0.02,
     onTimeRate: 0.93,
+    // Hard capability limits — used to EXCLUDE, never to score.
+    maxLayers: 8,
+    materials: ["FR-4"],
+    minTraceMm: 0.1,
+    minQty: 5,
+    maxQty: 5000,
+    currencies: ["EUR", "USD"],
+    packages: ["THT", "0402", "QFN"],
+    // Operational readiness — all of it must hold before a buyer sees them.
+    contractStatus: "negotiating",
+    ndaStatus: "signed",
+    dataProcessingAgreement: "none",
+    payoutReady: false,
+    apiHealth: "not_integrated",
+    acceptingNewOrders: true,
+    capacityStatus: "normal",
+    lastCapabilityVerifiedAt: "2026-05-20",
     status: "draft",
     featured: false,
     strategic: false,
@@ -110,7 +171,7 @@ export const partners: ServicePartner[] = [
     logoToken: "from-indigo-400 to-purple-600",
     description:
       "US-local PCB and PCBA, fast turnaround, local engineering support, small-batch assembly, domestic warehousing and after-sales.",
-    partnerTypes: ["pcb_manufacturer", "pcb_assembly", "local_support", "fulfillment"],
+    partnerTypes: ["testing_service", "warehousing", "fulfillment", "local_support"],
     headquartersCountry: "US",
     serviceCountries: ["US", "CA"],
     shippingCountries: ["US", "CA"],
@@ -126,7 +187,24 @@ export const partners: ServicePartner[] = [
     completedOrders: 54,
     disputeRate: 0.03,
     onTimeRate: 0.91,
-    status: "draft",
+    // Hard capability limits — used to EXCLUDE, never to score.
+    maxLayers: 12,
+    materials: ["FR-4", "Rogers"],
+    minTraceMm: 0.09,
+    minQty: 1,
+    maxQty: 2000,
+    currencies: ["USD"],
+    packages: ["THT", "0402", "0201", "QFN", "BGA"],
+    // Operational readiness — all of it must hold before a buyer sees them.
+    contractStatus: "signed",
+    ndaStatus: "signed",
+    dataProcessingAgreement: "signed",
+    payoutReady: true,
+    apiHealth: "healthy",
+    acceptingNewOrders: true,
+    capacityStatus: "constrained",
+    lastCapabilityVerifiedAt: "2026-07-05",
+    status: "active",
     featured: false,
     strategic: false,
   },
@@ -139,6 +217,7 @@ export const products: DigitalProduct[] = [
   {
     id: "dp_rp2350",
     slug: "rp2350-pocket-instrument",
+    productType: "digital",
     title: "RP2350 Multi-function Pocket Instrument",
     tagline:
       "A pocket-sized bench tool — logic probe, signal generator and voltmeter — built around the RP2350 on a compact 4-layer board.",
@@ -170,6 +249,7 @@ export const products: DigitalProduct[] = [
         blurb: "For personal projects and learning. Build for yourself, no resale.",
         unitLimit: 0,
         updatePolicy: "minor_updates",
+        manufacturingRights: { personalUnits: 5, commercialUnits: 0, partnerManufacturingAllowed: true, sourceFilesIncluded: false },
       },
       {
         id: "lic_c_1",
@@ -179,6 +259,7 @@ export const products: DigitalProduct[] = [
         blurb: "Sell up to 100 physical products built from this design.",
         unitLimit: 100,
         updatePolicy: "all_updates_for_period",
+        manufacturingRights: { personalUnits: 100, commercialUnits: 100, partnerManufacturingAllowed: true, sourceFilesIncluded: false },
       },
       {
         id: "lic_u_1",
@@ -188,6 +269,7 @@ export const products: DigitalProduct[] = [
         blurb: "Unlimited physical production. No unit cap.",
         unitLimit: null,
         updatePolicy: "lifetime_updates",
+        manufacturingRights: { personalUnits: 1000000, commercialUnits: 1000000, partnerManufacturingAllowed: true, sourceFilesIncluded: true },
       },
     ],
     bom: [
@@ -211,6 +293,7 @@ export const products: DigitalProduct[] = [
   {
     id: "dp_rflib",
     slug: "rf-symbols-footprints-pack",
+    productType: "digital",
     title: "High-quality RF Symbols & Footprints Pack",
     tagline:
       "A carefully drawn library of RF connectors, filters and IC footprints with matched 3D models. Verified against KiCad 8 and 9.",
@@ -240,6 +323,7 @@ export const products: DigitalProduct[] = [
         blurb: "Use in unlimited personal and commercial KiCad projects. No redistribution of the library itself.",
         unitLimit: null,
         updatePolicy: "lifetime_updates",
+        manufacturingRights: { personalUnits: 5, commercialUnits: 0, partnerManufacturingAllowed: true, sourceFilesIncluded: false },
       },
     ],
     bom: [],
@@ -252,6 +336,7 @@ export const products: DigitalProduct[] = [
   {
     id: "dp_review",
     slug: "professional-kicad-design-review",
+    productType: "digital",
     title: "Professional KiCad Design Review",
     tagline:
       "A senior engineer reviews your schematic and PCB for manufacturability, signal integrity basics, and file organization — with a written report.",
@@ -281,8 +366,139 @@ export const products: DigitalProduct[] = [
         blurb: "One round of review on a board up to 6 layers, with a written report and a follow-up call.",
         unitLimit: null,
         updatePolicy: "current_version_only",
+        manufacturingRights: { personalUnits: 0, commercialUnits: 0, partnerManufacturingAllowed: false, sourceFilesIncluded: false },
       },
     ],
+    bom: [],
+    files: [],
+  },
+  // -------------------------------------------------------------------------
+  // PHYSICAL — an assembled unit. The buyer must SEE what the seller set in
+  // the back office: price, live stock, weight, handling time, ship profile.
+  // -------------------------------------------------------------------------
+  {
+    id: "dp_pocket_assembled",
+    slug: "pocket-instrument-assembled",
+    title: "Pocket Instrument — Assembled & Tested Unit",
+    productType: "physical",
+    price: 89.0,
+    stock: 34,
+    weightG: 620,
+    dimensionsMm: "118 × 74 × 22",
+    shipProfileId: "sp_kit",
+    handlingDays: "2–4 days",
+    tagline: "The RP2350 pocket instrument, built, flashed and tested — scope, logic analyzer and signal generator in your pocket.",
+    category: "complete_design",
+    sellerId: "s_sulab",
+    sellerName: "SuLab",
+    sellerCountry: "US",
+    kicadVersion: "—",
+    verifyLevel: 3,
+    verifiedVersion: "1.0.0",
+    reviewPartner: "KiCad Design Services",
+    downloads: 0,
+    timesManufactured: 212,
+    updatedAt: "2026-07-10",
+    layers: 4,
+    sizeMm: "98 × 56",
+    heroThumb: "from-teal-600 to-emerald-800",
+    makeEnabled: false,
+    allowFullFileToPartner: false,
+    rating: 4.9,
+    reviewCount: 87,
+    supportResponse: "~24 hours",
+    licenses: [],
+    bom: [],
+    files: [],
+  },
+  // -------------------------------------------------------------------------
+  // BUNDLE — hardware + the design files that made it. One cart line each.
+  // -------------------------------------------------------------------------
+  {
+    id: "dp_pocket_bundle",
+    slug: "pocket-instrument-kit-plus-sources",
+    title: "Pocket Instrument Kit + Design Files (Bundle)",
+    productType: "bundle",
+    price: 129.0,
+    stock: 18,
+    weightG: 640,
+    dimensionsMm: "118 × 74 × 26",
+    shipProfileId: "sp_kit",
+    handlingDays: "2–4 days",
+    tagline: "The solder-it-yourself kit AND the full KiCad sources with a commercial licence — build one, then make it yours.",
+    category: "complete_design",
+    sellerId: "s_sulab",
+    sellerName: "SuLab",
+    sellerCountry: "US",
+    kicadVersion: "KiCad 8.0",
+    verifyLevel: 3,
+    verifiedVersion: "1.0.0",
+    reviewPartner: "KiCad Design Services",
+    downloads: 96,
+    timesManufactured: 212,
+    updatedAt: "2026-07-08",
+    layers: 4,
+    sizeMm: "98 × 56",
+    heroThumb: "from-indigo-600 to-violet-900",
+    makeEnabled: true,
+    allowFullFileToPartner: false,
+    rating: 4.8,
+    reviewCount: 41,
+    supportResponse: "~24 hours",
+    licenses: [
+      {
+        id: "lic_bundle",
+        kind: "commercial_limited",
+        name: "Bundle Licence (kit + sources, 100 units)",
+        price: 129,
+        blurb: "Included with the kit: full KiCad sources, minor updates, and the right to build up to 100 commercial units.",
+        unitLimit: 100,
+        updatePolicy: "minor_updates",
+        manufacturingRights: { personalUnits: 100, commercialUnits: 100, partnerManufacturingAllowed: true, sourceFilesIncluded: false },
+      },
+    ],
+    bom: [
+      { refdes: "U1", mpn: "RP2350A", manufacturer: "Raspberry Pi", value: "RP2350A", package: "QFN-60", qty: 1, confidence: 1 },
+      { refdes: "U2", mpn: "W25Q128JVSIQ", manufacturer: "Winbond", value: "128Mbit QSPI", package: "SOIC-8", qty: 1, confidence: 1 },
+      { refdes: "J1", mpn: "TYPE-C-31-M-12", manufacturer: "HRO", value: "USB-C 16P", package: "SMD", qty: 1, confidence: 0.97 },
+    ],
+    files: [],
+  },
+  // -------------------------------------------------------------------------
+  // PREORDER — stock 0 on purpose; the campaign carries the commitment.
+  // -------------------------------------------------------------------------
+  {
+    id: "dp_logic_preorder",
+    slug: "pocket-logic-analyzer-preorder",
+    title: "Pocket Logic Analyzer — Batch 2 (Preorder)",
+    productType: "physical",
+    price: 79.0,
+    stock: 0,
+    preorderCampaignSlug: "pocket-logic-analyzer",
+    weightG: 380,
+    dimensionsMm: "92 × 58 × 18",
+    shipProfileId: "sp_kit",
+    handlingDays: "ships when batch completes",
+    tagline: "16-channel 100 MS/s logic analyzer. Batch 2 builds when 50 units are committed — 37 already are.",
+    category: "complete_design",
+    sellerId: "s_sulab",
+    sellerName: "SuLab",
+    sellerCountry: "US",
+    kicadVersion: "—",
+    verifyLevel: 2,
+    verifiedVersion: "0.9.0",
+    downloads: 0,
+    timesManufactured: 50,
+    updatedAt: "2026-07-12",
+    layers: 4,
+    sizeMm: "84 × 50",
+    heroThumb: "from-amber-500 to-orange-800",
+    makeEnabled: false,
+    allowFullFileToPartner: false,
+    rating: 4.7,
+    reviewCount: 12,
+    supportResponse: "~24 hours",
+    licenses: [],
     bom: [],
     files: [],
   },
@@ -373,14 +589,26 @@ export const seedIpComplaints: IpComplaint[] = [
 export const seedEntitlements: Entitlement[] = [
   {
     id: "ent_3001",
-    productId: "dp_rflib",
-    productTitle: "High-quality RF Symbols & Footprints Pack",
-    licenseName: "Standard License",
+    productId: "dp_rp2350",
+    productTitle: "RP2350 Multi-function Pocket Instrument",
+    licenseName: "Commercial License (100 units)",
     grantedAt: "2026-06-20",
     downloadLimit: 10,
-    downloadCount: 2,
-    version: "2026.06",
+    downloadCount: 8,
     status: "active",
+    purchasedVersionId: "av_rp2350_100",
+    latestAccessibleVersionId: "av_rp2350_100",
+    updatePolicy: "minor_updates",
+    rights: {
+      personalUnits: 100,
+      commercialUnits: 100,
+      partnerManufacturingAllowed: true,
+      sourceFilesIncluded: false,
+    },
+    commercialUnitsUsed: 40,
+    seats: 1,
+    licenseSnapshotHash: "sha256:9f2c…d41a",
+    termsAcceptedAt: "2026-06-20T09:12:04Z",
   },
 ];
 
@@ -431,3 +659,122 @@ export const seedFulfillments: Fulfillment[] = [
 export function getProduct(slug: string) {
   return products.find((p) => p.slug === slug);
 }
+
+
+// ---------------------------------------------------------------------------
+// Q&A — a listing is alive after publish: buyers ask, the seller answers.
+// ---------------------------------------------------------------------------
+export const seedQuestions: ProductQuestion[] = [
+  {
+    id: "q_1",
+    productId: "dp_pocket_assembled",
+    askedBy: "mkr_jensen",
+    askedAt: "2026-07-11",
+    question: "Does the assembled unit ship with the acrylic case installed, or do I need to assemble that part?",
+    answer: "Fully assembled including the case — you only peel the protective film. Firmware is flashed and each unit runs a 12-point functional test before packing.",
+    answeredAt: "2026-07-11",
+  },
+  {
+    id: "q_2",
+    productId: "dp_pocket_bundle",
+    askedBy: "hw_elena",
+    askedAt: "2026-07-12",
+    question: "If I buy the bundle, do future minor versions of the design files come included?",
+    answer: "Yes — the bundle licence includes minor updates (1.x). A 2.0 would be a paid upgrade, announced in the version notes first.",
+    answeredAt: "2026-07-13",
+  },
+  {
+    id: "q_3",
+    productId: "dp_pocket_assembled",
+    askedBy: "probe_master",
+    askedAt: "2026-07-13",
+    question: "What probe connector does it use — standard 2.54 mm header or something proprietary?",
+  },
+];
+
+// Version notes posted AFTER publish — sellers keep the listing alive.
+export const seedVersionNotes: VersionNote[] = [
+  {
+    id: "vn_1",
+    productId: "dp_rp2350",
+    semver: "1.1.0",
+    note: "USB-C CC resistors corrected (5.1 kΩ), silkscreen cleanup, new STEP models for the case. v1.0 buyers on minor-updates policy get this free.",
+    postedAt: "2026-07-08",
+  },
+  {
+    id: "vn_2",
+    productId: "dp_pocket_assembled",
+    semver: "1.0.1",
+    note: "Batch 3 units ship with the improved rotary encoder (Bourns PEC11R). No electrical changes.",
+    postedAt: "2026-07-10",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Admin queues — new sellers apply, products get reviewed before going live.
+// ---------------------------------------------------------------------------
+export const seedSellerApplications: SellerApplication[] = [
+  {
+    id: "app_1",
+    storeName: "Nordlys Electronics",
+    applicantName: "K. Haugen",
+    country: "NO",
+    productsPlanned: "LoRa environmental sensors, KiCad reference designs",
+    corridor: "stripe",
+    appliedAt: "2026-07-12",
+    status: "pending",
+  },
+  {
+    id: "app_2",
+    storeName: "深圳微光电子 (Weiguang)",
+    applicantName: "Chen Li",
+    country: "CN",
+    productsPlanned: "FPGA dev boards, assembled test jigs",
+    corridor: "wise",
+    appliedAt: "2026-07-13",
+    status: "pending",
+  },
+  {
+    id: "app_3",
+    storeName: "Bidouille Labs",
+    applicantName: "M. Fournier",
+    country: "FR",
+    productsPlanned: "Eurorack synth modules (kits + assembled)",
+    corridor: "stripe",
+    appliedAt: "2026-07-09",
+    status: "approved",
+  },
+];
+
+export const seedProductSubmissions: ProductSubmission[] = [
+  {
+    id: "sub_1",
+    productTitle: "CAN-FD Sniffer Pro (assembled)",
+    sellerName: "Bidouille Labs",
+    productType: "physical",
+    submittedAt: "2026-07-13",
+    ipDeclared: true,
+    filesOk: true,
+    status: "pending",
+  },
+  {
+    id: "sub_2",
+    productTitle: "STM32H7 Camera Board — KiCad sources",
+    sellerName: "Nordlys Electronics",
+    productType: "digital",
+    submittedAt: "2026-07-13",
+    ipDeclared: true,
+    filesOk: false,
+    status: "pending",
+  },
+  {
+    id: "sub_3",
+    productTitle: "\"Arduino Nano Plus\" clone board",
+    sellerName: "quickboards2026",
+    productType: "physical",
+    submittedAt: "2026-07-12",
+    ipDeclared: false,
+    filesOk: true,
+    status: "pending",
+  },
+];

@@ -23,7 +23,7 @@ export default function CartPage() {
     setDestination,
   } = useApp();
 
-  const digitalPay = computePayment(cart, paymentConfig);
+  const pay = computePayment(cart, paymentConfig, { shippingCharged: 0 });
   const physical = cart.filter((c) => c.productType === "physical");
   const hasPhysical = physical.length > 0;
 
@@ -39,11 +39,15 @@ export default function CartPage() {
   const shipCost = hasPhysical && !blocked ? quoteShipping(dest.zone, method, shipWeight, shipProfile) : 0;
 
   const physicalGoods = physical.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-  const goodsValue = digitalPay.grossDigital + physicalGoods;
+  const digitalGoods = cart.filter((c) => c.productType === "digital").reduce((s, c) => s + c.unitPrice * c.qty, 0);
+  const serviceGoods = cart.filter((c) => c.productType === "service").reduce((s, c) => s + c.unitPrice * c.qty, 0);
+  const goodsValue = pay.goodsSubtotal;
   const hint = customsHint(destination, goodsValue, shipProfile);
   const vat = hasPhysical ? hint.vatCollected : 0;
 
-  const buyerTotal = goodsValue + digitalPay.smallOrderFee + shipCost + vat;
+  // Recompute with shipping so the ledger closes end to end.
+  const final = computePayment(cart, paymentConfig, { shippingCharged: shipCost, shippingCost: shipCost });
+  const buyerTotal = final.buyerTotal + vat;
 
   function checkout() {
     cart
@@ -57,8 +61,22 @@ export default function CartPage() {
           grantedAt: new Date().toISOString().slice(0, 10),
           downloadLimit: 10,
           downloadCount: 0,
-          version: "1.0.0",
           status: "active",
+          // Version-bound from the moment of purchase — a later seller upload
+          // cannot silently change what this buyer owns.
+          purchasedVersionId: "av_rp2350_100",
+          latestAccessibleVersionId: "av_rp2350_100",
+          updatePolicy: "minor_updates",
+          rights: {
+            personalUnits: 100,
+            commercialUnits: 100,
+            partnerManufacturingAllowed: true,
+            sourceFilesIncluded: false,
+          },
+          commercialUnitsUsed: 0,
+          seats: 1,
+          licenseSnapshotHash: "sha256:" + Math.random().toString(16).slice(2, 6) + "…" + Math.random().toString(16).slice(2, 6),
+          termsAcceptedAt: new Date().toISOString(),
         })
       );
     clearCart();
@@ -151,7 +169,7 @@ export default function CartPage() {
           </button>
         )}
 
-        {digitalPay.smallOrderFee > 0 && (
+        {pay.smallOrderFee > 0 && (
           <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
             <strong>Small order fee applies.</strong> Your digital subtotal is under $
             {paymentConfig.digitalMinimumWithoutFee}. Add another design and the $
@@ -233,9 +251,9 @@ export default function CartPage() {
         )}
 
         <dl className="space-y-2 text-sm">
-          {digitalPay.grossDigital > 0 && <Line k="Digital assets" v={digitalPay.grossDigital} />}
+          {digitalGoods > 0 && <Line k="Digital assets" v={digitalGoods} />}
           {physicalGoods > 0 && <Line k="Physical goods" v={physicalGoods} />}
-          {digitalPay.smallOrderFee > 0 && <Line k="Small order fee" v={digitalPay.smallOrderFee} muted />}
+          {pay.smallOrderFee > 0 && <Line k="Small order fee" v={pay.smallOrderFee} muted />}
           {hasPhysical && !blocked && (
             <Line k={`Shipping (${method.name.replace(" Intl", "")})`} v={shipCost} muted />
           )}
@@ -258,27 +276,41 @@ export default function CartPage() {
           Pay <Money v={buyerTotal} /> (simulated)
         </button>
 
-        <details className="mt-4">
-          <summary className="cursor-pointer text-xs font-semibold text-link">Show fee economics (seller view)</summary>
-          <dl className="mt-2 space-y-1.5 text-xs text-muted">
-            <Line k="Stripe fee (2.9% + $0.30)" v={digitalPay.stripeFee} />
-            <Line k="Platform fee on digital (10%)" v={digitalPay.platformFee} />
-            {physicalGoods > 0 && <Line k="Platform fee on physical (5%)" v={physicalGoods * 0.05} />}
-            {shipCost > 0 && <Line k="Label cost (seller pays)" v={shipCost} />}
-            <div className="border-t border-line pt-1.5 flex justify-between font-semibold text-slate">
-              <span>Stripe fee as % of digital subtotal</span>
-              <span className={digitalPay.stripeFeePctOfGross > 12 ? "text-danger" : "text-ok"}>
-                {digitalPay.stripeFeePctOfGross}%
-              </span>
-            </div>
+        <details className="mt-4" open>
+          <summary className="cursor-pointer text-xs font-semibold text-link">
+            Where every dollar goes (the ledger must close)
+          </summary>
+          <dl className="mt-2 space-y-1.5 text-xs">
+            <Line k="Buyer pays" v={final.buyerTotal} />
+            <div className="pt-1.5 mt-1 border-t border-line" />
+            <Line k="→ Seller net" v={final.sellerNet} />
+            <Line k="→ Platform net revenue" v={final.platformNetRevenue} />
+            <Line k="→ Stripe" v={final.stripeFee} muted />
+            {shipCost > 0 && <Line k="→ Carrier (label)" v={shipCost} muted />}
+            {vat > 0 && <Line k="→ Tax authority (VAT)" v={vat} muted />}
           </dl>
-          <p className="text-[11px] text-muted mt-2 leading-relaxed">
-            One charge covers digital and physical together. Platform commission never touches shipping or VAT, and the
-            label the seller buys at fulfillment is priced from the same profile that quoted this buyer — so the seller
-            cannot be surprised by their own shipping cost.
-          </p>
-          <Link href="/seller/payouts" className="text-link text-xs hover:underline">
-            Full corridor breakdown (Stripe vs Wise) →
+          <div className="mt-2 rounded-md bg-panel px-2.5 py-2 text-[11px] text-slate leading-relaxed">
+            Processing fee mode: <strong className="text-navy">{final.feeAllocation.replace(/_/g, " ")}</strong>. The
+            Stripe fee of ${final.stripeFee.toFixed(2)} is paid by{" "}
+            <strong className="text-navy">
+              {final.stripeFeePaidBySeller > 0
+                ? `the seller ($${final.stripeFeePaidBySeller.toFixed(2)})`
+                : final.stripeFeePaidByPlatform > 0
+                ? `the platform ($${final.stripeFeePaidByPlatform.toFixed(2)})`
+                : `the buyer ($${final.stripeFeePaidByBuyer.toFixed(2)})`}
+            </strong>
+            {final.feeAllocation === "shared" &&
+              ` and the platform ($${final.stripeFeePaidByPlatform.toFixed(2)})`}
+            . It is not a number that appears in the UI and then vanishes from the books.
+          </div>
+          {serviceGoods > 0 && (
+            <p className="t-hint mt-2">
+              Services (${serviceGoods.toFixed(2)}) are excluded from the small-order fee and carry their own commission
+              rate — a $99 design review is quoted human work, not a small order in need of subsidy.
+            </p>
+          )}
+          <Link href="/admin/payments" className="text-link text-xs hover:underline mt-2 inline-block">
+            Model all four fee-allocation modes →
           </Link>
         </details>
       </aside>

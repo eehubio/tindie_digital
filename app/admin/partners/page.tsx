@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { partners as seedPartners } from "@/lib/mock";
 import { ServicePartner } from "@/lib/types";
 import { SectionTitle, PartnerLogo, Stars } from "@/components/ui";
 import { useApp } from "@/lib/store";
+import { isBuyerVisible } from "@/lib/engine";
 
 const STATUS_TONE: Record<ServicePartner["status"], string> = {
   active: "bg-emerald-100 text-emerald-700",
@@ -14,25 +14,115 @@ const STATUS_TONE: Record<ServicePartner["status"], string> = {
 };
 
 export default function AdminPartnersPage() {
-  const [list, setList] = useState<ServicePartner[]>(seedPartners);
+  const { partnerList: list, patchPartner, addPartner, showToast } = useApp();
   const [editing, setEditing] = useState<string | null>(null);
-  const { showToast } = useApp();
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: "", country: "US", types: "pcb_manufacturer" });
 
   function patch(id: string, p: Partial<ServicePartner>) {
-    setList((l) => l.map((x) => (x.id === id ? { ...x, ...p } : x)));
+    patchPartner(id, p);
+  }
+
+  function createPartner() {
+    const id = "pt_" + form.name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 12) + Math.random().toString(36).slice(2, 4);
+    addPartner({
+      id,
+      slug: id,
+      name: form.name,
+      logoToken: form.name.slice(0, 2).toUpperCase(),
+      description: "Newly onboarded — complete profile before activation.",
+      partnerTypes: [form.types as ServicePartner["partnerTypes"][number]],
+      serviceCountries: [form.country],
+      headquartersCountry: form.country,
+      shippingCountries: [form.country],
+      languages: ["en"],
+      quoteMode: "manual_quote",
+      // Everything starts SAFE: draft + nothing signed → buyers cannot see it
+      // until every readiness condition below is flipped by a human.
+      status: "draft",
+      maxLayers: 4,
+      materials: ["FR-4"],
+      minTraceMm: 0.15,
+      minQty: 1,
+      maxQty: 500,
+      currencies: ["USD"],
+      packages: ["THT", "0402"],
+      contractStatus: "none",
+      ndaStatus: "none",
+      dataProcessingAgreement: "none",
+      payoutReady: false,
+      apiHealth: "not_integrated",
+      acceptingNewOrders: false,
+      capacityStatus: "normal",
+      lastCapabilityVerifiedAt: new Date().toISOString().slice(0, 10),
+      featured: false,
+      strategic: false,
+      rating: 0,
+      completedOrders: 0,
+      onTimeRate: 0,
+      disputeRate: 0,
+      minLeadDays: 7,
+      maxLeadDays: 21,
+      fromPricePcb: 20,
+      commissionModel: "revenue_share",
+      commissionRate: 0.08,
+    });
+    setAdding(false);
+    setForm({ name: "", country: "US", types: "pcb_manufacturer" });
   }
 
   return (
     <div>
-      <SectionTitle right={<button className="t-btn-primary">+ Add partner</button>}>
+      <SectionTitle right={<button className="t-btn-primary" onClick={() => setAdding((v) => !v)}>+ Add partner</button>}>
         Partner Network
       </SectionTitle>
 
+      {adding && (
+        <div className="t-card p-4 mb-5 border-teal/40">
+          <h3 className="font-semibold text-navy mb-3">New partner (created as draft)</h3>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="t-label">Company name</label>
+              <input className="t-input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Aisler B.V." />
+            </div>
+            <div>
+              <label className="t-label">HQ country</label>
+              <select className="t-input" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}>
+                {["US", "CN", "DE", "NL", "GB", "JP", "IN"].map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="t-label">Primary service</label>
+              <select className="t-input" value={form.types} onChange={(e) => setForm((f) => ({ ...f, types: e.target.value }))}>
+                <option value="pcb_manufacturer">PCB fabrication</option>
+                <option value="pcb_assembly">PCB assembly</option>
+                <option value="design_review">Design review</option>
+                <option value="component_sourcing">Component sourcing</option>
+                <option value="testing_service">Testing</option>
+                <option value="fulfillment">Fulfillment</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button className="t-btn-ghost" onClick={() => setAdding(false)}>Cancel</button>
+            <button className="t-btn-primary disabled:opacity-40" disabled={!form.name.trim()} onClick={createPartner}>
+              Create draft partner
+            </button>
+          </div>
+          <p className="t-hint mt-2">
+            New partners are born <strong>draft</strong> with nothing signed — the buyer-visible badge stays red until
+            contract, NDA, DPA, payouts and integration are each flipped by a human. There is no shortcut through that
+            list, on purpose.
+          </p>
+        </div>
+      )}
+
       <p className="text-sm text-muted mb-5 max-w-3xl">
-        Every partner is a record — capabilities, regions, lead times, commission model and routing status
-        are stored data, never hardcoded. The routing engine reads this table directly, so adding a European
-        or US partner requires no code change. Status <strong>draft</strong> keeps a partner out of buyer-facing
-        routing while it is being onboarded.
+        Every partner is a record — capabilities, regions, lead times, commission model and routing status are stored
+        data, never hardcoded. But <strong>&ldquo;active&rdquo; in a database is not the same thing as &ldquo;safe to
+        send a paying buyer to&rdquo;</strong>: a partner is only buyer-visible when the contract, NDA and DPA are
+        signed, payouts work, the integration is up, and they are actually accepting orders with capacity to spare. The
+        badge below is computed from all of those, not from the status field alone.
       </p>
 
       <div className="space-y-3">
@@ -46,7 +136,39 @@ export default function AdminPartnersPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-navy">{p.name}</h3>
                     <span className={`t-tag ${STATUS_TONE[p.status]}`}>{p.status}</span>
-                    {p.strategic && <span className="t-tag bg-teal-light text-teal-dark">strategic</span>}
+                    {isBuyerVisible(p) ? (
+                      <span className="t-tag bg-emerald-100 text-emerald-700">✓ buyer-visible</span>
+                    ) : (
+                      <span className="t-tag bg-red-100 text-red-700">not shown to buyers</span>
+                    )}
+                    {p.featured && (
+                      <span className="t-tag bg-tag text-white" title="Paid placement, labelled as Sponsored. Never a ranking boost.">
+                        featured / sponsored
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(
+                      [
+                        [p.contractStatus === "signed", "contract"],
+                        [p.ndaStatus === "signed", "NDA"],
+                        [p.dataProcessingAgreement === "signed", "DPA"],
+                        [p.payoutReady, "payouts"],
+                        [p.apiHealth !== "down" && p.apiHealth !== "not_integrated", "API"],
+                        [p.acceptingNewOrders, "accepting orders"],
+                        [p.capacityStatus !== "full", `capacity: ${p.capacityStatus}`],
+                      ] as [boolean, string][]
+                    ).map(([ok, label]) => (
+                      <span
+                        key={label}
+                        className={`t-tag ${ok ? "bg-panel text-slate" : "bg-red-100 text-red-700"}`}
+                      >
+                        {ok ? "✓" : "✕"} {label}
+                      </span>
+                    ))}
+                    <span className="t-tag bg-panel text-slate">
+                      verified {p.lastCapabilityVerifiedAt}
+                    </span>
                   </div>
                   <p className="text-sm text-muted truncate">{p.description}</p>
                   <div className="text-xs text-muted mt-1 flex flex-wrap gap-x-3 gap-y-1">
@@ -137,19 +259,47 @@ export default function AdminPartnersPage() {
                   </div>
 
                   <div>
-                    <label className="t-label">Strategic weighting</label>
+                    <label className="t-label">Commercial relationship</label>
                     <label className="flex items-center gap-2 text-sm mt-2">
                       <input
                         type="checkbox"
-                        checked={p.strategic}
-                        onChange={(e) => patch(p.id, { strategic: e.target.checked })}
+                        checked={p.featured}
+                        onChange={(e) => patch(p.id, { featured: e.target.checked })}
                       />
-                      Boost in routing score (5% weight)
+                      Featured placement (shown to buyers as <strong>Sponsored</strong>)
                     </label>
                     <p className="t-hint">
-                      Bounded on purpose — strategic partners cannot outrank a partner that lacks the required
-                      capability or region.
+                      This buys a <em>labelled</em> slot. It does <strong>not</strong> affect the routing score — the old
+                      engine gave strategic partners 5% of the match score, which dressed a commercial relationship up as
+                      a technical fit. A ranking that quietly favours whoever pays us is an advertisement wearing a
+                      routing score. It has been removed.
                     </p>
+                  </div>
+
+                  <div>
+                    <label className="t-label">Accepting new orders</label>
+                    <select
+                      className="t-input"
+                      value={p.acceptingNewOrders ? "y" : "n"}
+                      onChange={(e) => patch(p.id, { acceptingNewOrders: e.target.value === "y" })}
+                    >
+                      <option value="y">Yes</option>
+                      <option value="n">No — paused</option>
+                    </select>
+                    <p className="t-hint">A paused partner disappears from buyer routing immediately.</p>
+                  </div>
+
+                  <div>
+                    <label className="t-label">Capacity</label>
+                    <select
+                      className="t-input"
+                      value={p.capacityStatus}
+                      onChange={(e) => patch(p.id, { capacityStatus: e.target.value as ServicePartner["capacityStatus"] })}
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="constrained">Constrained — flagged to buyers</option>
+                      <option value="full">Full — excluded from routing</option>
+                    </select>
                   </div>
 
                   <div>

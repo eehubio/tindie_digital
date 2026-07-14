@@ -278,3 +278,99 @@ lib/
 Real Stripe Connect onboarding · real Shippo API calls · real speech-to-text · real KiCad file parsing · real partner APIs · authentication · database · AI-assisted routing (the Phase 1 scorer is rule-based and sufficient).
 
 Every one of these has a seam already cut for it: `computeNet()` for the payment corridor, `quoteShipping()` / `mockShippoLabel()` for the carrier layer, and `VoiceCapture`'s transcript stream for STT.
+
+---
+
+## 5. Architecture-correctness refactor / 架构正确性重构
+
+An external review (GPT) flagged a set of P0/P1 defects. Most were real; the response below states plainly which were accepted, which were judged more severe than reported, and which were disputed.
+
+### 5.1 The payment ledger now closes (P0-2)
+
+The old model computed a Stripe fee and then **deducted it from nobody**. Goods went to the seller, commission to the platform, and the processor's cut came from nowhere — an itemised UI over books that did not balance. This was worse than the review stated: it is not a display bug, it is a reconciliation incident waiting to happen.
+
+`PaymentConfig` now carries `feeAllocation: "platform_absorbs" | "seller_pays" | "buyer_pays" | "shared"`, and `computePayment()` attributes every cent. `assertBalanced()` proves it:
+
+```
+buyerTotal = sellerNet + platformNetRevenue + stripeFee + tax + shippingCost
+```
+
+`/admin/payments` runs the four required scenarios (single $2, single $5, two $5, mixed digital+physical) against all four allocation modes, each showing a **✓ books close** proof. `buyer_pays` is circular (a surcharge raises the amount charged, which raises the fee) and is solved algebraically — `T = (B + k) / (1 − p)` — not approximated.
+
+**Services were also pulled out of the digital small-order logic.** A $99 design review is quoted human work; it is not a small order in need of subsidy, and it must not inherit instant-download refund semantics.
+
+### 5.2 Partner routing: eligibility is a hard gate (P0-3, P0-4)
+
+The old engine scored everyone and surfaced anyone covering ≥1 requested service — so a PCB-only shop appeared for a PCB+SMT+sourcing+review job and looked like it could take the whole thing. It also routed to `draft` partners.
+
+Now, in this order and never merged:
+
+1. **`checkEligibility()`** — a hard gate. Operational readiness (contract, NDA, DPA, payouts, API health, accepting orders, capacity, capability-data freshness) **and** capability constraints (layers, materials, min trace, quantity range, packages, currency, lead time). Fail one, and the partner does not appear. No score rescues it.
+2. **`rankPartners()`** — among the eligible only, on merit only.
+3. **`composePlan()`** — when no single partner covers the job, build a **service chain**: KiCad Services reviews → Huaqiu fabricates and assembles → a US partner tests and ships. Each leg receives only the file scope it needs. *That* is a global partner network; picking one factory from a list is a dropdown.
+
+`isBuyerVisible()` encodes the principle that **"active" in a database is not "safe to send a paying buyer to"**. Excluded partners are shown to the buyer *with reasons*, so they can tell "nobody can do this" apart from "nobody has been onboarded for this yet".
+
+### 5.3 Strategic weighting removed from ranking (P1-4 — the most important one)
+
+The old engine gave 5% of the match score for being a "Strategic Tindie partner", and printed *"Strategic Tindie partner"* as a match reason. That dresses a commercial relationship up as a technical fit.
+
+**A ranking that quietly favours the partner who pays us is not a ranking. It is an advertisement wearing one.** The term is gone from `WEIGHTS` entirely. Commercial relationships now buy a **labelled `Sponsored` slot** — visible to the buyer as sponsorship, which is honest, and which is the only version of this compatible with the community-neutrality constraint.
+
+### 5.4 Manufacturing is a licence right (P1-3)
+
+`LicenseOffer.manufacturingRights` = `{ personalUnits, commercialUnits, partnerManufacturingAllowed, sourceFilesIncluded }`. `checkManufacturingRights()` runs live in **Make It**: select 200 units against a 100-unit commercial licence and the quote buttons disable with *"You selected 200 units. Your licence permits 100 commercial units and 40 are already used — 60 remain. Upgrade required."* The partner's file scope (fabrication outputs vs. editable sources) is read from the licence too.
+
+### 5.5 Versions, entitlements, and a download gate that actually refuses (P0-5, P0-6)
+
+**Where the review was wrong:** real download enforcement — signed URLs, atomic decrement, S3 anti-hotlinking — is inherently backend. A prototype cannot implement it, and pretending otherwise would be theatre.
+
+**What a prototype can and must do:** stop lying. The old code did `Math.min(downloadCount + 1, downloadLimit)` — a counter that saturates at the limit and then says *"Download started"* forever. It was a progress bar, not a control.
+
+Now: `AssetVersion` is a first-class immutable snapshot (files, BOM, validation, certification, withdrawal status). `Entitlement` is version-bound (`purchasedVersionId`, `updatePolicy`, `licenseSnapshotHash`, `commercialUnitsUsed`). `requestDownload()` returns a `DownloadGrant` that **can refuse** — limit reached, licence revoked, refund issued, version withdrawn on an IP complaint, or a version the update policy does not cover — with a reason the buyer reads. **The button does not decide.** The same state machine is the contract the backend implements, so the two cannot drift.
+
+### 5.6 Digital listing flow: engineering trust first (P1-2)
+
+Reordered to **Upload → Analyze → Fix BOM → Verify → Preview & scope → License → Sell**. A new **Verify** step earns a verification level (L0–L3) from *evidence* — DRC/ERC pass, fabricated, photo of the assembled board, firmware, test log — rather than from a checkbox. AI is repositioned as an assist at the description step, not the headline. A buyer of a KiCad project does not care how well the AI wrote the copy; they care whether the files open and whether anyone has ever actually built the thing.
+
+### 5.7 Draft, repositories, tests (P1-1, P1-6, P1-8)
+
+- **`lib/draft.ts`** — one `ListingDraft` object for the whole wizard, autosaved, with `validateDraft()` running over the *whole* draft rather than per-screen. A listing is a document with a lifecycle, not a sequence of screens.
+- **`lib/repositories/`** — pages no longer `import { partners } from "@/lib/mock"`. `PartnerRepository.listBuyerVisible()` enforces the visibility boundary once, so a page *cannot* accidentally request draft partners. Swapping to an API implementation is one line in `repos`.
+- **`tests/engine.test.ts`** — 31 vitest tests, all passing: ledger closure across 4 scenarios × 4 allocation modes, fee attribution, small-order economics, partner eligibility exclusions, chain composition, absence of a strategic term in ranking, download refusal, licence unit caps. Scripts: `typecheck`, `test`, `test:watch`, `format:check`.
+
+### 5.8 Deliberately not done
+
+- **Thin backend MVP (P1-5)** — agreed in direction, but it is not the prototype's job. The prototype's job is to pin the contracts down hard enough that the backend can be written against them. That is what §5.1–5.5 do.
+- **Store splitting (P1-7)** — `sessionStore` / `cartStore` / `listingDraftStore` / `uiStore` is correct for production. Deferred: at prototype scale it is churn without a demonstration.
+
+
+---
+
+## 6. Marketplace-completeness update / 市场完整性更新
+
+### 6.1 Storage — two layers, one build / 存储：两层，一次构建
+
+- **Demo DB (zero config):** the Zustand store is persisted to `localStorage` (`tindie-proto-db`). What a seller publishes or edits survives a refresh and is immediately visible in the buyer marketplace — the seller→buyer loop is real, not staged.
+- **Real DB (one env var):** a Drizzle + Neon Postgres schema lives in `lib/db/schema.ts` (`products`, `product_questions`, `version_notes`, `ship_profiles`), with API routes at `/api/products` and `/api/questions`. **Without `DATABASE_URL` they serve the seeded mock; with it they read/write Postgres.** Same build serves both modes. Push the schema with `npm i -D drizzle-kit && npx drizzle-kit push`.
+
+### 6.2 Buyer / 买家
+
+- **All product types are listed:** digital files, **physical** (`/product/pocket-instrument-assembled`), **physical + digital bundle** (`/product/pocket-instrument-kit-plus-sources`), and a **preorder** listing tied to the Pocket Logic Analyzer campaign.
+- **Detail pages adapt to what is sold.** Physical: price, live stock, qty selector, handling time, weight, dimensions, and a **Shipping & Delivery** tab that shows exactly what the seller configured — per-destination rates from the seller's ship profile, IOSS/customs notes. Bundle: both the commerce panel and the full digital tabs. Preorder: commitment progress + link into the campaign; card is authorised, charged at goal.
+- **Q&A on every listing.** Buyers ask on the product page; answers publish publicly. A listing is alive after publish.
+- **BOM "Match" renamed to "Part ID confidence"** with an explanation: it is the parser's certainty that a BOM row maps to the exact orderable MPN, checked against distributor catalogs — i.e. "can you paste this BOM into an order". It stays, because for a design-file buyer it is one of the few pre-purchase signals of BOM quality; remove it and the column that replaces it is a support ticket.
+
+### 6.3 Seller / 卖家
+
+- **Dashboard**: four KPI cards — 可提现余额 / 待结算 / 需处理订单 / 待回复消息 — **every one is a link** landing on the page that acts on it. The 需要你处理 list computes from live state (overdue shipments, labels not marked shipped, unanswered questions) and each row carries a working CTA. Analytics is merged in; the old route redirects. **Payouts is the last nav tab.**
+- **Orders (`/seller/orders-action`)**: the ship queue in three states. Overdue orders are flagged with a link to the delay template. **Label-bought-but-not-marked-shipped gets its own section and reminder** — the buyer still sees "preparing" until the seller marks it, and that gap is a top source of "where is my order". Marking shipped prompts (never auto-sends) the shipping-notice template.
+- **Messages (`/seller/messages`)**: unanswered Q&A with publish-in-place, plus four order message templates — 发货通知 / 延迟 / 缺货 / 退款 — **copy-paste by design** with obvious variables pre-filled. The out-of-stock template offers the buyer the choice (wait with goodwill / refund now); that structure prevents more disputes than any policy text.
+- **Manage listing (`/seller/manage/[slug]`)**: publish is the beginning, not the end — edit price/stock/tagline/handling, **post version notes** (shown on the buyer page under "Seller updates"), answer this listing's questions.
+- **Shipping profiles are per-product.** Multiple named profiles (42 g module vs 620 g kit), assigned per listing; the buyer's Shipping tab, checkout and label purchase all read the same object.
+
+### 6.4 Admin / 平台
+
+- **Add Partner works** — creates a draft partner with *nothing signed*: the buyer-visible badge stays red until contract, NDA, DPA, payouts and integration are each flipped. No shortcut exists, on purpose. Admin partner edits (pause, capacity) apply to buyer routing immediately, because Make It reads the live partner list.
+- **Sellers (`/admin/sellers`)**: application queue. Approval assigns the payment corridor and therefore the risk defaults (Stripe 0%/T+2 vs Wise 10%/T+14) — stated to the seller at approval, not discovered on first payout. Rejections require a reason the applicant reads.
+- **Product Review (`/admin/reviews`)**: submission queue with two pre-checks (IP declaration, files parsed). **Approve is disabled while the IP declaration is unchecked** — the seeded "Arduino Nano Plus clone" is exactly the case the queue exists for.

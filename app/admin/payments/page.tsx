@@ -2,43 +2,74 @@
 
 import { useMemo, useState } from "react";
 import { paymentConfig as seedCfg } from "@/lib/mock";
-import { PaymentConfig, CartItem } from "@/lib/types";
-import { computePayment } from "@/lib/engine";
+import { PaymentConfig, CartItem, ProcessingFeeAllocation } from "@/lib/types";
+import { computePayment, assertBalanced } from "@/lib/engine";
 import { SectionTitle } from "@/components/ui";
 import { useApp } from "@/lib/store";
 
-function item(price: number, qty: number): CartItem {
-  return {
-    key: `sim_${price}_${qty}`,
-    productId: "sim",
-    productTitle: "Simulated asset",
-    productType: "digital",
-    fulfillmentType: "download",
-    sellerName: "Sim Seller",
-    unitPrice: price,
-    qty,
-  };
-}
+const item = (
+  type: CartItem["productType"],
+  price: number,
+  qty = 1,
+  key = `${type}-${price}-${qty}`
+): CartItem => ({
+  key,
+  productId: "sim",
+  productTitle: "Simulated",
+  productType: type,
+  fulfillmentType: type === "digital" ? "download" : "shipping",
+  sellerName: "Sim",
+  unitPrice: price,
+  qty,
+});
+
+// The four cases the model has to survive.
+const SCENARIOS: { name: string; items: CartItem[]; shipping?: number }[] = [
+  { name: "Single $2 asset", items: [item("digital", 2)] },
+  { name: "Single $5 asset", items: [item("digital", 5)] },
+  { name: "Two $5 assets", items: [item("digital", 5, 1, "a"), item("digital", 5, 1, "b")] },
+  {
+    name: "Digital $12 + physical $19.99",
+    items: [item("digital", 12), item("physical", 19.99)],
+    shipping: 6.5,
+  },
+];
+
+const ALLOC_LABEL: Record<ProcessingFeeAllocation, string> = {
+  platform_absorbs: "Platform absorbs",
+  seller_pays: "Seller pays",
+  buyer_pays: "Buyer pays (surcharge)",
+  shared: "Shared 50/50",
+};
+
+const ALLOC_HELP: Record<ProcessingFeeAllocation, string> = {
+  platform_absorbs:
+    "Cleanest for the seller, and the platform's commission has to cover it. At a 10% take on a $5 asset that is $0.50 of commission against $0.45 of Stripe — the margin is a rounding error, which is exactly why the small-order fee exists.",
+  seller_pays:
+    "Tindie's classic behaviour. The seller sees a smaller payout than the headline price. Honest only if the deduction is itemised on the payout, which is what the Payouts page does.",
+  buyer_pays:
+    "Surcharging is circular — the surcharge increases the amount charged, which increases the fee. Solved algebraically here rather than approximated. Note that card-brand rules and several jurisdictions restrict or prohibit this.",
+  shared:
+    "Splits the processing cost between seller and platform. Defensible, but it means neither party can predict their margin without doing arithmetic — which most sellers will not do.",
+};
 
 export default function AdminPaymentsPage() {
   const [cfg, setCfg] = useState<PaymentConfig>(seedCfg);
-  const [simPrice, setSimPrice] = useState(5);
-  const [simQty, setSimQty] = useState(1);
   const { showToast } = useApp();
 
-  const sim = useMemo(() => computePayment([item(simPrice, simQty)], cfg), [simPrice, simQty, cfg]);
+  const set = <K extends keyof PaymentConfig>(k: K, v: PaymentConfig[K]) => setCfg((c) => ({ ...c, [k]: v }));
 
-  // Sweep: what a lone purchase costs at each price point.
-  const sweep = useMemo(
+  const results = useMemo(
     () =>
-      [2, 3, 5, 8, 10, 15, 25, 49].map((p) => {
-        const b = computePayment([item(p, 1)], cfg);
-        return { price: p, ...b };
+      SCENARIOS.map((s) => {
+        const b = computePayment(s.items, cfg, {
+          shippingCharged: s.shipping ?? 0,
+          shippingCost: s.shipping ?? 0,
+        });
+        return { ...s, b, balance: assertBalanced(b, s.shipping ?? 0) };
       }),
     [cfg]
   );
-
-  const set = <K extends keyof PaymentConfig>(k: K, v: number) => setCfg((c) => ({ ...c, [k]: v }));
 
   return (
     <div>
@@ -52,26 +83,43 @@ export default function AdminPaymentsPage() {
         Payment Configuration
       </SectionTitle>
 
-      <div className="t-card p-4 mb-5 bg-panel/60">
-        <p className="text-sm text-slate">
-          <strong className="text-navy">The problem.</strong> A $5 KiCad asset carries a fixed{" "}
-          ${cfg.stripeFixedFee.toFixed(2)} Stripe fee plus {(cfg.stripePercent * 100).toFixed(1)}% — over{" "}
-          {computePayment([item(5, 1)], { ...cfg, smallOrderFee: 0, digitalMinimumWithoutFee: 0 }).stripeFeePctOfGross.toFixed(
-            1
-          )}
-          % of the sale before the platform takes anything. Three levers fix it, all configured here:{" "}
-          <strong className="text-navy">a floor price</strong>, <strong className="text-navy">a small-order fee</strong>{" "}
-          below a fee-free threshold, and <strong className="text-navy">consolidated cart checkout</strong> so one Stripe
-          charge covers many assets.
-        </p>
+      <div className="t-card p-4 mb-5 bg-panel/60 text-sm text-slate leading-relaxed">
+        <strong className="text-navy">The fee has to land on somebody.</strong> An itemised UI that shows a Stripe fee
+        while the seller&apos;s payout and the platform&apos;s revenue both ignore it is not a fee model — it is a
+        rounding error waiting to become a reconciliation incident. Pick an allocation below and every scenario
+        recalculates, including a proof that the books close.
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        {/* Config */}
+      <div className="grid lg:grid-cols-[320px_1fr] gap-5 items-start">
+        {/* Levers */}
         <div className="t-card p-5 space-y-4">
-          <h3 className="font-bold text-navy">Platform levers</h3>
-
           <div>
+            <label className="t-label">Who pays the processing fee</label>
+            <div className="space-y-2">
+              {(["platform_absorbs", "seller_pays", "buyer_pays", "shared"] as ProcessingFeeAllocation[]).map((a) => (
+                <label
+                  key={a}
+                  className={`block border rounded-lg p-2.5 cursor-pointer transition ${
+                    cfg.feeAllocation === a ? "border-teal bg-teal-light/40" : "border-line hover:border-teal/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={cfg.feeAllocation === a}
+                      onChange={() => set("feeAllocation", a)}
+                      className="accent-teal"
+                    />
+                    <span className="font-semibold text-navy text-sm">{ALLOC_LABEL[a]}</span>
+                    {a === "buyer_pays" && <span className="t-tag bg-red-100 text-red-700 ml-auto">restricted</span>}
+                  </div>
+                </label>
+              ))}
+            </div>
+            <p className="t-hint">{ALLOC_HELP[cfg.feeAllocation]}</p>
+          </div>
+
+          <div className="pt-3 border-t border-line">
             <label className="t-label">Minimum digital price (USD)</label>
             <input
               className="t-input"
@@ -80,21 +128,17 @@ export default function AdminPaymentsPage() {
               value={cfg.minimumDigitalPrice}
               onChange={(e) => set("minimumDigitalPrice", Number(e.target.value))}
             />
-            <p className="t-hint">Below this, a listing cannot be priced. Blocks structurally unprofitable sales.</p>
           </div>
-
           <div>
             <label className="t-label">Fee-free threshold (USD)</label>
             <input
               className="t-input"
               type="number"
-              step="1"
               value={cfg.digitalMinimumWithoutFee}
               onChange={(e) => set("digitalMinimumWithoutFee", Number(e.target.value))}
             />
-            <p className="t-hint">Carts at or above this pay no small-order fee — this is what pushes bundling.</p>
+            <p className="t-hint">Digital only. Physical orders carry shipping; services carry their own price.</p>
           </div>
-
           <div>
             <label className="t-label">Small-order fee (USD)</label>
             <input
@@ -104,23 +148,49 @@ export default function AdminPaymentsPage() {
               value={cfg.smallOrderFee}
               onChange={(e) => set("smallOrderFee", Number(e.target.value))}
             />
-            <p className="t-hint">Charged to the buyer, not deducted from the seller. Sellers keep their headline price.</p>
-          </div>
-
-          <div>
-            <label className="t-label">Platform fee on digital (%)</label>
-            <input
-              className="t-input"
-              type="number"
-              step="0.5"
-              value={cfg.platformFeePercent * 100}
-              onChange={(e) => set("platformFeePercent", Number(e.target.value) / 100)}
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-line">
             <div>
-              <label className="t-label">Stripe fixed (USD)</label>
+              <label className="t-label">Digital fee (%)</label>
+              <input
+                className="t-input"
+                type="number"
+                value={cfg.platformFeePercent * 100}
+                onChange={(e) => set("platformFeePercent", Number(e.target.value) / 100)}
+              />
+            </div>
+            <div>
+              <label className="t-label">Physical fee (%)</label>
+              <input
+                className="t-input"
+                type="number"
+                value={cfg.platformFeePercentPhysical * 100}
+                onChange={(e) => set("platformFeePercentPhysical", Number(e.target.value) / 100)}
+              />
+            </div>
+            <div>
+              <label className="t-label">Service fee (%)</label>
+              <input
+                className="t-input"
+                type="number"
+                value={cfg.servicePlatformFeePercent * 100}
+                onChange={(e) => set("servicePlatformFeePercent", Number(e.target.value) / 100)}
+              />
+              <p className="t-hint">Services are quoted work — separate rate, separate refund logic.</p>
+            </div>
+            <div>
+              <label className="t-label">Tax rate (%)</label>
+              <input
+                className="t-input"
+                type="number"
+                step="0.5"
+                value={cfg.taxRate * 100}
+                onChange={(e) => set("taxRate", Number(e.target.value) / 100)}
+              />
+            </div>
+            <div>
+              <label className="t-label">Stripe fixed ($)</label>
               <input
                 className="t-input"
                 type="number"
@@ -142,113 +212,65 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
 
-        {/* Simulator */}
-        <div className="t-card p-5 lg:col-span-2">
-          <h3 className="font-bold text-navy">Live simulator</h3>
-          <div className="grid sm:grid-cols-2 gap-4 mt-3">
-            <div>
-              <label className="t-label">Asset price (USD)</label>
-              <input
-                className="t-input"
-                type="range"
-                min={1}
-                max={50}
-                step={1}
-                value={simPrice}
-                onChange={(e) => setSimPrice(Number(e.target.value))}
-              />
-              <div className="text-sm text-navy font-semibold">${simPrice.toFixed(2)}</div>
-              {simPrice < cfg.minimumDigitalPrice && (
-                <p className="t-hint text-danger">Below the minimum digital price — listing would be rejected.</p>
-              )}
-            </div>
-            <div>
-              <label className="t-label">Assets in cart</label>
-              <input
-                className="t-input"
-                type="range"
-                min={1}
-                max={8}
-                step={1}
-                value={simQty}
-                onChange={(e) => setSimQty(Number(e.target.value))}
-              />
-              <div className="text-sm text-navy font-semibold">
-                {simQty} item{simQty > 1 ? "s" : ""}
+        {/* Scenarios */}
+        <div className="space-y-4">
+          {results.map(({ name, b, balance, shipping }) => (
+            <div key={name} className="t-card overflow-hidden">
+              <div className="px-4 py-2.5 bg-panel border-b border-line flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-navy text-sm">{name}</span>
+                {b.platformLoses && <span className="t-tag bg-red-100 text-red-700">platform loses money</span>}
+                <span
+                  className={`t-tag ml-auto ${
+                    balance.balanced ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                  }`}
+                  title="buyerTotal = sellerNet + platformNet + stripeFee + tax + shippingCost"
+                >
+                  {balance.balanced ? "✓ books close" : `✕ off by $${balance.delta}`}
+                </span>
               </div>
-              <p className="t-hint">One Stripe charge per cart — the fixed fee is paid once.</p>
+
+              <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-line">
+                <div className="p-4">
+                  <div className="text-xs uppercase tracking-wide text-muted mb-2">Buyer</div>
+                  <dl className="text-sm space-y-1">
+                    <Row k="Goods" v={b.goodsSubtotal} />
+                    {b.serviceSubtotal > 0 && <Row k="Services" v={b.serviceSubtotal} />}
+                    {b.shipping > 0 && <Row k="Shipping" v={b.shipping} />}
+                    {b.smallOrderFee > 0 && <Row k="Small-order fee" v={b.smallOrderFee} />}
+                    {b.tax > 0 && <Row k="Tax" v={b.tax} />}
+                    {b.stripeFeePaidByBuyer > 0 && <Row k="Processing surcharge" v={b.stripeFeePaidByBuyer} />}
+                    <div className="flex justify-between font-bold text-navy border-t border-line pt-1.5 mt-1.5">
+                      <dt>Buyer total</dt>
+                      <dd>${b.buyerTotal.toFixed(2)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="p-4">
+                  <div className="text-xs uppercase tracking-wide text-muted mb-2">Where it lands</div>
+                  <dl className="text-sm space-y-1">
+                    <Row k="Seller net" v={b.sellerNet} strong />
+                    <Row k="Platform net revenue" v={b.platformNetRevenue} strong tone={b.platformLoses ? "text-danger" : "text-ok"} />
+                    <Row k="Stripe" v={b.stripeFee} muted />
+                    {shipping ? <Row k="Carrier (label)" v={shipping} muted /> : null}
+                    {b.tax > 0 && <Row k="Tax authority" v={b.tax} muted />}
+                  </dl>
+                  <div className="mt-2 pt-2 border-t border-line text-[11px] text-muted leading-relaxed">
+                    Stripe fee ${b.stripeFee.toFixed(2)} ={" "}
+                    {b.stripeFeePaidByBuyer > 0 && `buyer $${b.stripeFeePaidByBuyer.toFixed(2)} `}
+                    {b.stripeFeePaidBySeller > 0 && `seller $${b.stripeFeePaidBySeller.toFixed(2)} `}
+                    {b.stripeFeePaidByPlatform > 0 && `platform $${b.stripeFeePaidByPlatform.toFixed(2)}`}
+                    {" · "}
+                    {b.stripeFeePctOfGoods.toFixed(1)}% of merchandise · seller keeps {b.sellerTakePct.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
 
-          <div className="grid sm:grid-cols-4 gap-3 mt-5">
-            <Tile label="Buyer pays" value={`$${sim.buyerTotal.toFixed(2)}`} />
-            <Tile
-              label="Small-order fee"
-              value={`$${sim.smallOrderFee.toFixed(2)}`}
-              tone={sim.smallOrderFee ? "text-tag" : "text-ok"}
-            />
-            <Tile
-              label="Stripe cost"
-              value={`$${sim.stripeFee.toFixed(2)}`}
-              tone={sim.stripeFeePctOfGross > 8 ? "text-danger" : "text-navy"}
-            />
-            <Tile
-              label="Stripe % of goods"
-              value={`${sim.stripeFeePctOfGross.toFixed(1)}%`}
-              tone={sim.stripeFeePctOfGross > 8 ? "text-danger" : "text-ok"}
-            />
-          </div>
-
-          <div className="mt-3 text-sm bg-panel rounded-lg p-3 text-slate">
-            Seller receives <strong className="text-navy">${sim.sellerNet.toFixed(2)}</strong> (
-            {sim.effectiveTakeForSeller.toFixed(0)}% of goods value). Platform margin after Stripe:{" "}
-            <strong className={sim.platformFee - sim.stripeFee + sim.smallOrderFee >= 0 ? "text-ok" : "text-danger"}>
-              ${(sim.platformFee + sim.smallOrderFee - sim.stripeFee).toFixed(2)}
-            </strong>
-            .
-          </div>
-
-          <h4 className="font-semibold text-navy text-sm mt-6 mb-2">
-            Single-item purchase across price points (current config)
-          </h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-muted border-b border-line">
-                  <th className="py-2">Price</th>
-                  <th>Buyer pays</th>
-                  <th>Small-order fee</th>
-                  <th>Stripe</th>
-                  <th>Stripe % of goods</th>
-                  <th>Platform net</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sweep.map((r) => {
-                  const net = r.platformFee + r.smallOrderFee - r.stripeFee;
-                  const blocked = r.price < cfg.minimumDigitalPrice;
-                  return (
-                    <tr key={r.price} className={`border-b border-line ${blocked ? "opacity-40" : ""}`}>
-                      <td className="py-2 font-semibold text-navy">
-                        ${r.price.toFixed(2)}
-                        {blocked && <span className="t-tag bg-red-100 text-red-700 ml-2">blocked</span>}
-                      </td>
-                      <td>${r.buyerTotal.toFixed(2)}</td>
-                      <td>{r.smallOrderFee ? `$${r.smallOrderFee.toFixed(2)}` : "—"}</td>
-                      <td>${r.stripeFee.toFixed(2)}</td>
-                      <td className={r.stripeFeePctOfGross > 8 ? "text-danger font-semibold" : "text-ok"}>
-                        {r.stripeFeePctOfGross.toFixed(1)}%
-                      </td>
-                      <td className={net >= 0 ? "text-ok" : "text-danger font-semibold"}>${net.toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="t-hint mt-2">
-            Try setting the small-order fee to $0 — the platform goes negative on every sale under roughly $5. That is the
-            economics being fixed here, not a UI preference.
+          <p className="t-hint">
+            Try <strong>Platform absorbs</strong> with the small-order fee set to $0: the $2 and $5 scenarios go red.
+            That is the whole business case for the small-order fee, stated as arithmetic rather than as an assertion.
           </p>
         </div>
       </div>
@@ -256,11 +278,11 @@ export default function AdminPaymentsPage() {
   );
 }
 
-function Tile({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Row({ k, v, muted, strong, tone }: { k: string; v: number; muted?: boolean; strong?: boolean; tone?: string }) {
   return (
-    <div className="border border-line rounded-lg p-3">
-      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
-      <div className={`text-lg font-bold mt-0.5 ${tone ?? "text-navy"}`}>{value}</div>
+    <div className={`flex justify-between ${muted ? "text-muted" : ""} ${strong ? "font-semibold" : ""}`}>
+      <dt>{k}</dt>
+      <dd className={tone ?? (strong ? "text-navy" : "")}>${v.toFixed(2)}</dd>
     </div>
   );
 }
