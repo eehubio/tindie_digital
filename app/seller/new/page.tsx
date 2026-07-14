@@ -84,7 +84,7 @@ export default function NewListingWizard() {
       <DraftBar />
 
       {/* Stepper */}
-      <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1 mb-6 overflow-x-auto no-scrollbar pb-1">
         {flow.map((sid, i) => (
           <div key={sid} className="flex items-center shrink-0">
             <button

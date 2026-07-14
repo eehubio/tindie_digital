@@ -82,7 +82,7 @@ export default function ProductPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         {/* Left: tabs */}
         <div>
-          <div className="flex gap-1 border-b border-line overflow-x-auto">
+          <div className="flex gap-1 border-b border-line overflow-x-auto no-scrollbar">
             {TAB_SETS[p.productType].map((t) => {
               if (t === "Make It" && !p.makeEnabled) return null;
               if (t === "BOM" && p.bom.length === 0) return null;

@@ -106,7 +106,7 @@ export default function PayoutsPage() {
       <NetIncomeCalculator initialPrice={19.99} />
 
       <h3 className="font-bold text-navy mt-8 mb-2">Ledger</h3>
-      <div className="t-card overflow-x-auto">
+      <div className="t-card overflow-x-auto no-scrollbar">
         <table className="w-full text-sm">
           <thead className="bg-panel text-xs uppercase text-muted">
             <tr>

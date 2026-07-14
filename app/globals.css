@@ -4,6 +4,22 @@
 
 :root { color-scheme: light; }
 
+/*
+ * Reserve the vertical scrollbar's space at all times. Without this, a tab with
+ * tall content shows a scrollbar (stealing ~8–17px of width) while a short tab
+ * hides it, so every tab switch shifts the whole page left/right. `stable`
+ * keeps the gutter permanently; the `overflow-y: scroll` fallback does the same
+ * for older engines that don't support scrollbar-gutter.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 body {
   color: #3C4858;
   background: #FFFFFF;
@@ -34,3 +50,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Horizontal tab strips scroll on narrow screens but shouldn't show a bar. */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -192,7 +192,7 @@ export default function BuildDashboard() {
         </button>
         {showJson && (
           <>
-            <pre className="mt-3 bg-navy text-white/90 rounded-lg p-4 text-[11px] overflow-x-auto leading-relaxed">
+            <pre className="mt-3 bg-navy text-white/90 rounded-lg p-4 text-[11px] overflow-x-auto no-scrollbar leading-relaxed">
               {JSON.stringify(buildCampaignPayload(c), null, 2)}
             </pre>
             <p className="t-hint mt-2">

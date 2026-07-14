@@ -105,7 +105,7 @@ export default function ShippingProfileEditor({
             </p>
           )}
 
-          <div className="overflow-x-auto mt-3">
+          <div className="overflow-x-auto no-scrollbar mt-3">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-muted border-b border-line">
