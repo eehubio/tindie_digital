@@ -10,6 +10,7 @@ import {
 } from "./mock";
 import { requestDownload } from "./entitlements";
 import { ListingDraft, newDraft } from "./draft";
+import { OpenProject, Challenge, seedProjects, seedChallenges, declineStats } from "./projects";
 import { DownloadGrant, DigitalProduct, ProductQuestion, VersionNote, ServicePartner, SellerApplication, ProductSubmission } from "./types";
 import { ShipProfile, seedShipProfiles, Fulfillment } from "./shipping";
 
@@ -77,6 +78,17 @@ interface AppState {
   decideApplication: (id: string, status: "approved" | "rejected", reason?: string) => void;
   productSubmissions: ProductSubmission[];
   decideSubmission: (id: string, status: "approved" | "rejected", reason?: string) => void;
+
+  /** Open projects — hackaday.io-style pages by sellers AND buyers. */
+  projects: OpenProject[];
+  addProject: (p: OpenProject) => void;
+  likeProject: (id: string) => void;
+
+  /** FunPack-style challenges: escrowed deposit, task, rules, refund on approval. */
+  challenges: Challenge[];
+  joinChallenge: (id: string) => void;
+  submitEntry: (challengeId: string, entryId: string, projectId: string) => void;
+  reviewEntry: (challengeId: string, entryId: string, approve: boolean, reason?: string) => void;
 
   fulfillments: Fulfillment[];
   updateFulfillment: (id: string, patch: Partial<Fulfillment>) => void;
@@ -257,6 +269,76 @@ export const useApp = create<AppState>()(
       toast: status === "approved" ? "Product approved and published" : "Submission rejected — seller notified",
     })),
 
+  projects: seedProjects,
+  addProject: (p) => set((s) => ({ projects: [p, ...s.projects], toast: "项目已发布 — 已关联到商品页" })),
+  likeProject: (id) =>
+    set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p)) })),
+
+  challenges: seedChallenges,
+  joinChallenge: (id) =>
+    set((s) => ({
+      challenges: s.challenges.map((c) =>
+        c.id === id && c.seatsTaken < c.seats
+          ? {
+              ...c,
+              seatsTaken: c.seatsTaken + 1,
+              entries: [
+                ...c.entries,
+                { id: "en_" + Math.random().toString(36).slice(2, 7), challengeId: id, buyerName: "you (demo)", status: "building" as const },
+              ],
+            }
+          : c
+      ),
+      toast: "已加入挑战 — 押金进入平台托管，完成任务并通过审核后原路退回",
+    })),
+  submitEntry: (challengeId, entryId, projectId) =>
+    set((s) => ({
+      challenges: s.challenges.map((c) =>
+        c.id === challengeId
+          ? {
+              ...c,
+              entries: c.entries.map((e) =>
+                e.id === entryId ? { ...e, projectId, status: "submitted" as const } : e
+              ),
+            }
+          : c
+      ),
+      toast: "作品已提交 — 等待卖家按规则审核",
+    })),
+  reviewEntry: (challengeId, entryId, approve, reason) =>
+    set((s) => {
+      const challenges = s.challenges.map((c) => {
+        if (c.id !== challengeId) return c;
+        // Circuit breaker: once tripped, further REJECTIONS are blocked —
+        // a challenge where the seller rejects most entries is a scam with
+        // extra steps. Approvals stay open.
+        const stats = declineStats(c);
+        if (!approve && stats.tripped) return c;
+        const entries = c.entries.map((e) =>
+          e.id === entryId
+            ? {
+                ...e,
+                status: (approve ? "approved" : "rejected") as "approved" | "rejected",
+                decidedAt: new Date().toISOString().slice(0, 10),
+                reason: approve ? undefined : reason,
+              }
+            : e
+        );
+        const after = declineStats({ ...c, entries });
+        return { ...c, entries, escalated: after.tripped };
+      });
+      const c = challenges.find((x) => x.id === challengeId)!;
+      const stats = declineStats(c);
+      return {
+        challenges,
+        toast: approve
+          ? "已通过 — 押金已原路退还给买家（Stripe 托管退款）"
+          : stats.tripped
+          ? "拒绝率超过 40%（≥5 次判定）— 熔断触发，本挑战已升级平台复核，拒绝操作已锁定"
+          : "已驳回 — 理由已发送，截止日期前买家可修复后重新提交",
+      };
+    }),
+
   fulfillments: seedFulfillments,
   updateFulfillment: (id, patch) =>
     set((s) => ({ fulfillments: s.fulfillments.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
@@ -301,6 +383,8 @@ export const useApp = create<AppState>()(
         sellerApplications: s.sellerApplications,
         productSubmissions: s.productSubmissions,
         shipProfiles: s.shipProfiles,
+        projects: s.projects,
+        challenges: s.challenges,
         entitlements: s.entitlements,
         fulfillments: s.fulfillments,
         cart: s.cart,

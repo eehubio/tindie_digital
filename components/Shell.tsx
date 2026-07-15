@@ -23,6 +23,7 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     nav: [
       { href: "/seller", label: "Dashboard" },
       { href: "/seller/new", label: "New Listing" },
+      { href: "/seller/projects", label: "Projects" },
       { href: "/seller/orders-action", label: "Orders" },
       { href: "/seller/messages", label: "Messages" },
       { href: "/seller/build", label: "Preorder" },

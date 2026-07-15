@@ -149,6 +149,8 @@ export interface DigitalProduct {
   handlingDays?: string;
   /** Links a listing to a preorder campaign (stock can be 0 while preorder runs). */
   preorderCampaignSlug?: string;
+  /** External build-log URL (hackaday.io, a blog, a GitHub repo) — a product's credibility often lives off-platform. */
+  externalProjectUrl?: string;
   tagline: string;
   category: DigitalAssetCategory;
   sellerId: string;
@@ -460,4 +462,110 @@ export interface IpComplaint {
   basis: string;
   status: "submitted" | "under_review" | "listing_restricted" | "counter_filed" | "removed" | "dismissed";
   filedAt: string;
+}
+
+
+// ============================================================================
+// OPEN-SOURCE PROJECTS & CHALLENGES
+//
+// Two related ideas that turn a marketplace into a community-proof engine:
+//
+//   1. A PROJECT is a build write-up (à la hackaday.io) that a seller or a
+//      buyer publishes. It can stand alone, but its value here is that it can
+//      be LINKED to a product — the project becomes the product's credibility.
+//      A seller uses it before/during/without a preorder to make the technical
+//      case for a design; a buyer uses it to show what they built.
+//
+//   2. A CHALLENGE is a seller-run event (think 电子森林 FunPack / 寒假在家一起练):
+//      release N units, set a goal/brief, and buyers who complete it and publish
+//      an open-source project — linked to the product, meeting the seller's
+//      rules — get recognised. The challenge is the demand-generation and
+//      proof-generation loop wrapped around a product.
+// ============================================================================
+
+export type ProjectAuthorRole = "seller" | "buyer";
+
+export type ProjectStatus =
+  | "draft"
+  | "published"
+  // challenge-submission lifecycle (only when submittedToChallengeId is set):
+  | "submitted"
+  | "under_review"
+  | "accepted"
+  | "needs_changes"
+  | "rejected";
+
+export interface ProjectSection {
+  heading: string;
+  body: string;
+}
+
+export interface Project {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  authorName: string;
+  authorRole: ProjectAuthorRole;
+  /** The product this project is about / built with. A project need not link one,
+   *  but a linked project is what feeds a product's credibility. */
+  linkedProductId?: string;
+  coverThumb: string;
+  sections: ProjectSection[];
+  /** Off-platform links: repo, hackaday.io, video, docs. */
+  links: { label: string; url: string }[];
+  tags: string[];
+  license: string; // "CERN-OHL-S-2.0", "MIT", "CC-BY-SA-4.0", ...
+  status: ProjectStatus;
+  publishedAt?: string;
+  likes: number;
+  /** Set when the project was created as a challenge entry. */
+  submittedToChallengeId?: string;
+  /** Populated by the seller's rubric check when submitted to a challenge. */
+  ruleChecks?: ChallengeRuleCheck[];
+  reviewNote?: string;
+}
+
+// ---- Challenges ----------------------------------------------------------
+export type ChallengeStatus = "draft" | "open" | "building" | "judging" | "closed";
+
+/** A single machine- or human-checkable rule the entry must satisfy. */
+export interface ChallengeRule {
+  id: string;
+  label: string;
+  /** auto = the platform can check it (has repo link, min sections, linked product);
+   *  manual = the seller confirms it during review. */
+  kind: "auto" | "manual";
+  required: boolean;
+}
+
+export interface ChallengeRuleCheck {
+  ruleId: string;
+  passed: boolean;
+  note?: string;
+}
+
+export interface Challenge {
+  id: string;
+  slug: string;
+  title: string;
+  hostName: string; // seller/store running it
+  productId: string; // the product participants buy and build with
+  blurb: string;
+  /** The brief — what participants must build/achieve. */
+  goal: string;
+  coverThumb: string;
+  seats: number; // units released for the challenge
+  claimed: number; // units bought into the challenge
+  price: number;
+  status: ChallengeStatus;
+  /** Timeline. Submissions accepted between buildStart and submitBy. */
+  registerBy: string;
+  buildStart: string;
+  submitBy: string;
+  /** The rules an entry is judged against — the seller sets these. */
+  rules: ChallengeRule[];
+  /** Recognition, not necessarily cash — badges, featured placement, next-kit credit. */
+  rewardText: string;
+  entriesCount: number;
 }

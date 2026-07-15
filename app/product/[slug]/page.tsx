@@ -14,9 +14,9 @@ import MakeIt from "@/components/MakeIt";
 // a design file needs Files/BOM/Licenses; a bundle needs both. Q&A on everything —
 // a listing stays alive after publish.
 const TAB_SETS: Record<string, string[]> = {
-  digital: ["Overview", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Q&A", "Reviews"],
-  physical: ["Overview", "Shipping & Delivery", "Q&A", "Reviews"],
-  bundle: ["Overview", "Shipping & Delivery", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Q&A", "Reviews"],
+  digital: ["Overview", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
+  physical: ["Overview", "Shipping & Delivery", "Projects", "Q&A", "Reviews"],
+  bundle: ["Overview", "Shipping & Delivery", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
 };
 type Tab = string;
 
@@ -108,6 +108,7 @@ export default function ProductPage() {
             {tab === "Licenses" && <LicenseMatrix p={p} />}
             {tab === "Make It" && <MakeIt p={p} />}
             {tab === "Shipping & Delivery" && <ShippingTab p={p} />}
+            {tab === "Projects" && <ProjectsTab p={p} />}
             {tab === "Q&A" && <QATab p={p} />}
             {tab === "Reviews" && (
               <div className="t-card p-6 text-muted text-sm">
@@ -537,6 +538,47 @@ function QATab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Projects tab — the credibility engine. Seller design-walkthroughs and buyer
+// build logs, attached to THIS listing. Technical depth next to the buy box.
+// ---------------------------------------------------------------------------
+function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
+  const { projects } = useApp();
+  const linked = projects.filter((x) => x.productId === p.id);
+
+  return (
+    <div className="space-y-4">
+      {linked.length === 0 ? (
+        <div className="t-card p-6 text-center text-muted text-sm">
+          还没有关联的开源项目。买过这件商品？在你的 Library 里可以直接为它发布装机记录。
+        </div>
+      ) : (
+        linked.map((pj) => (
+          <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card p-4 flex gap-4 hover:shadow-card transition">
+            <div className={`w-24 h-16 rounded-md bg-gradient-to-br ${pj.coverGradient} shrink-0`} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`t-tag ${pj.authorRole === "seller" ? "bg-teal text-white" : "bg-panel text-slate"}`}>
+                  {pj.authorRole === "seller" ? "卖家 · 设计走读" : pj.kind === "challenge_entry" ? "买家 · 挑战作品" : "买家 · 装机记录"}
+                </span>
+                {pj.youtubeUrl && <span className="text-xs text-muted">▶ 含视频</span>}
+              </div>
+              <h3 className="font-semibold text-navy mt-1 line-clamp-1">{pj.title}</h3>
+              <p className="text-xs text-muted mt-0.5 line-clamp-2">{pj.summary}</p>
+            </div>
+            <span className="ml-auto text-xs text-muted shrink-0 self-center">♥ {pj.likes}</span>
+          </Link>
+        ))
+      )}
+      <p className="t-hint">
+        为什么这个标签存在：AI 能写出漂亮的商品描述，但写不出「第三次打样才通过、前两次失败在哪」。
+        设计走读和真实买家的作品，是营销文案买不到的可信度。
+      </p>
     </div>
   );
 }

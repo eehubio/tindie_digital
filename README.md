@@ -374,3 +374,14 @@ Reordered to **Upload → Analyze → Fix BOM → Verify → Preview & scope →
 - **Add Partner works** — creates a draft partner with *nothing signed*: the buyer-visible badge stays red until contract, NDA, DPA, payouts and integration are each flipped. No shortcut exists, on purpose. Admin partner edits (pause, capacity) apply to buyer routing immediately, because Make It reads the live partner list.
 - **Sellers (`/admin/sellers`)**: application queue. Approval assigns the payment corridor and therefore the risk defaults (Stripe 0%/T+2 vs Wise 10%/T+14) — stated to the seller at approval, not discovered on first payout. Rejections require a reason the applicant reads.
 - **Product Review (`/admin/reviews`)**: submission queue with two pre-checks (IP declaration, files parsed). **Approve is disabled while the IP declaration is unchecked** — the seeded "Arduino Nano Plus clone" is exactly the case the queue exists for.
+
+
+---
+
+## 7. Projects & Challenges / 开源项目与挑战活动（FunPack 模式）
+
+- **Open projects (`/projects`)** — hackaday.io-style pages by sellers AND buyers, each linked to a listing. Sellers publish design walkthroughs (before / during / without a preorder) — architecture trade-offs, AFE iterations, **which of the three board spins failed and why**; buyers publish build logs and challenge entries, initiated with one click from their Library ("发布开源项目" on every purchase). The product page gains a **Projects tab** aggregating everything linked — credibility that marketing copy can't buy.
+- **Challenges (`/challenges/[slug]`)** — the 电子森林 FunPack mechanism: N seats × deposit (= board price), a task, snapshot-frozen rules (repo + Tindie project page ≥2 sections + video + OSS licence). Complete on time and pass review → **deposit refunded in full, the board is effectively free**. Deposits sit in **platform escrow** (never in the seller's balance) so the refund is always recoverable — a Stripe-corridor product by design. Forfeits convert to a normal order.
+- **Dispute circuit breaker (PRD v1.0 §11)** — ≥5 decisions with a decline rate >40% locks the seller's Reject action and escalates the whole challenge to platform review (Approve stays open). A challenge that rejects most entries is a scam with extra steps; the breaker makes it structurally impossible. Rules are frozen at join-time — same principle as the licence snapshot hash.
+- **Sponsors** — DigiKey-style sponsors fund seats or perks in exchange for branding on the challenge and every entry page. Sponsored seats still refund to the **buyer**: sponsorship buys visibility, never influence over decisions — same discipline as §5.4 of the spec.
+- Seller console at `/seller/projects`: publish walkthroughs, launch challenges (seats/deposit/task/rules/deadline), review submitted entries (approve → refund; reject requires a reason the buyer reads verbatim).

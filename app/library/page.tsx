@@ -57,6 +57,13 @@ export default function LibraryPage() {
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
                     <Link
+                      href={`/projects/new?product=${e.productId}`}
+                      className="t-btn-ghost !text-xs text-center"
+                      title="在你买到的这件硬件上发布装机记录或改造项目"
+                    >
+                      发布开源项目
+                    </Link>
+                    <Link
                       href={`/dispute?product=${encodeURIComponent(e.productTitle)}`}
                       className="text-xs text-link hover:underline text-center"
                     >
