@@ -49,7 +49,7 @@ function NewProjectForm() {
       challengeId,
       summary: summary.trim(),
       sections: sections.filter((s) => s.heading.trim() && s.body.trim()),
-      tags: ch ? ["挑战作品"] : [],
+      tags: ch ? ["challenge-entry"] : [],
       githubUrl: github.trim() || undefined,
       youtubeUrl: youtube.trim() || undefined,
       coverGradient: asSeller ? "from-teal-600 to-emerald-800" : "from-slate-600 to-navy",
@@ -64,19 +64,19 @@ function NewProjectForm() {
   return (
     <div className="max-w-3xl space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-navy">发布开源项目</h1>
+        <h1 className="text-xl font-bold text-navy">Publish an open project</h1>
         <p className="text-sm text-muted mt-1">
           {ch
-            ? `作为挑战「${ch.title}」的参赛作品发布 — 发布后自动提交审核。`
+            ? `Publishing as an entry in "${ch.title}" — it submits for review automatically.`
             : asSeller
-            ? "以设计走读的方式介绍你的产品 — 把架构取舍和踩坑记录摊开，是建立可信度的最短路径。"
-            : "在你买到的硬件上发布装机记录或改造项目。"}
+            ? "Introduce your product as a design walkthrough — laying trade-offs and pitfalls open is the shortest path to credibility."
+            : "Publish a build log or mod project on hardware you bought."}
         </p>
       </div>
 
       {ch && (
         <div className="t-card p-4 border-tag/40 bg-orange-50/40 text-sm text-slate">
-          <strong className="text-navy">审核规则提醒：</strong>
+          <strong className="text-navy">Review rules for this challenge:</strong>
           <ul className="mt-1 space-y-0.5">
             {ch.rules.filter((r) => r.required).map((r) => <li key={r.id}>· {r.label}</li>)}
           </ul>
@@ -85,28 +85,28 @@ function NewProjectForm() {
 
       <div className="t-card p-5 space-y-4">
         <div>
-          <label className="t-label">关联商品（项目会出现在该商品页的 Projects 标签下）</label>
+          <label className="t-label">Linked listing (the project appears under its Projects tab)</label>
           <select className="t-input" value={productId} onChange={(e) => setProductId(e.target.value)}>
-            <option value="">— 不关联 —</option>
+            <option value="">— No link —</option>
             {products.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
-          {prod && <p className="t-hint">↳ 将链接到 /product/{prod.slug}</p>}
+          {prod && <p className="t-hint">↳ Will link to /product/{prod.slug}</p>}
         </div>
         <div>
-          <label className="t-label">标题</label>
-          <input className="t-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：用 PLA 做了一个 LIN 总线解码器" />
+          <label className="t-label">Title</label>
+          <input className="t-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. A LIN bus decoder built on the PLA" />
         </div>
         <div>
-          <label className="t-label">摘要（一段话说清做了什么、为什么值得看）</label>
+          <label className="t-label">Summary (one paragraph: what you built and why it's worth reading)</label>
           <textarea className="t-input min-h-[70px]" value={summary} onChange={(e) => setSummary(e.target.value)} />
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
-            <label className="t-label">GitHub 仓库</label>
+            <label className="t-label">GitHub repo</label>
             <input className="t-input" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="https://github.com/…" />
           </div>
           <div>
-            <label className="t-label">演示视频 {ch && <span className="text-cta">*（挑战硬性要求）</span>}</label>
+            <label className="t-label">Demo video {ch && <span className="text-cta">* (hard requirement for challenges)</span>}</label>
             <input className="t-input" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" />
           </div>
         </div>
@@ -114,21 +114,21 @@ function NewProjectForm() {
 
       <div className="t-card p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-navy">正文章节 {ch && <span className="text-xs text-cta font-normal">（挑战要求 ≥2 节：方案 + 踩坑）</span>}</h2>
-          <button className="t-btn-ghost" onClick={() => setSections((s) => [...s, { heading: "", body: "" }])}>+ 加一节</button>
+          <h2 className="font-semibold text-navy">Sections {ch && <span className="text-xs text-cta font-normal">(challenges require ≥2: approach + pitfalls)</span>}</h2>
+          <button className="t-btn-ghost" onClick={() => setSections((s) => [...s, { heading: "", body: "" }])}>+ Add section</button>
         </div>
         <div className="space-y-4">
           {sections.map((s, i) => (
             <div key={i} className="border border-line rounded-lg p-3 space-y-2">
               <input
                 className="t-input"
-                placeholder={i === 0 ? "章节标题，例：方案与架构取舍" : "章节标题，例：踩坑记录"}
+                placeholder={i === 0 ? "Section heading, e.g. Approach & architecture" : "Section heading, e.g. Pitfalls"}
                 value={s.heading}
                 onChange={(e) => setSections((arr) => arr.map((x, j) => (j === i ? { ...x, heading: e.target.value } : x)))}
               />
               <textarea
                 className="t-input min-h-[90px]"
-                placeholder="正文——写给下一个复现的人看。失败记录比成功更有用。"
+                placeholder="Write for the next person who builds this. Failures are more useful than successes."
                 value={s.body}
                 onChange={(e) => setSections((arr) => arr.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))}
               />
@@ -138,9 +138,9 @@ function NewProjectForm() {
       </div>
 
       <div className="flex items-center justify-between">
-        <Link href={ch ? `/challenges/${ch.slug}` : "/projects"} className="text-sm text-muted hover:text-slate">← 返回</Link>
+        <Link href={ch ? `/challenges/${ch.slug}` : "/projects"} className="text-sm text-muted hover:text-slate">← Back</Link>
         <button className="t-btn-cta disabled:opacity-40" disabled={!requiredOk} onClick={publish}>
-          {ch ? "发布并提交审核" : "发布项目"}
+          {ch ? "Publish & submit for review" : "Publish project"}
         </button>
       </div>
     </div>

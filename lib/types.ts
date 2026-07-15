@@ -476,7 +476,7 @@ export interface IpComplaint {
 //      A seller uses it before/during/without a preorder to make the technical
 //      case for a design; a buyer uses it to show what they built.
 //
-//   2. A CHALLENGE is a seller-run event (think 电子森林 FunPack / 寒假在家一起练):
+//   2. A CHALLENGE is a seller-run event (the eetree.cn FunPack model):
 //      release N units, set a goal/brief, and buyers who complete it and publish
 //      an open-source project — linked to the product, meeting the seller's
 //      rules — get recognised. The challenge is the demand-generation and

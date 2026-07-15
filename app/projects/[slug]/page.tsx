@@ -10,7 +10,7 @@ export default function ProjectDetailPage() {
   const products = useApp((st) => st.allProducts)();
   const p = projects.find((x) => x.slug === slug);
 
-  if (!p) return <div className="t-card p-10 text-center text-muted">项目不存在。</div>;
+  if (!p) return <div className="t-card p-10 text-center text-muted">Project not found.</div>;
 
   const prod = products.find((x) => x.id === p.productId);
   const ch = challenges.find((c) => c.id === p.challengeId);
@@ -23,11 +23,11 @@ export default function ProjectDetailPage() {
       <div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="t-tag bg-navy text-white">
-            {p.kind === "product_intro" ? "产品设计走读" : p.kind === "build_log" ? "装机记录" : "挑战作品"}
+            {p.kind === "product_intro" ? "Design walkthrough" : p.kind === "build_log" ? "Build log" : "Challenge entry"}
           </span>
           <span className="text-sm text-muted">
             by <strong className={p.authorRole === "seller" ? "text-teal-dark" : "text-navy"}>{p.authorName}</strong>
-            （{p.authorRole === "seller" ? "卖家" : "买家"}） · 更新于 {p.updatedAt}
+            ({p.authorRole === "seller" ? "seller" : "buyer"}) · updated {p.updatedAt}
           </span>
           <button className="ml-auto t-btn-ghost" onClick={() => likeProject(p.id)}>♥ {p.likes}</button>
         </div>
@@ -41,13 +41,13 @@ export default function ProjectDetailPage() {
       {/* Links row — the URL enrichment the listing gains credibility from */}
       <div className="flex gap-2 flex-wrap">
         {p.githubUrl && (
-          <a href={p.githubUrl} target="_blank" rel="noreferrer" className="t-btn-ghost">⌥ GitHub 仓库</a>
+          <a href={p.githubUrl} target="_blank" rel="noreferrer" className="t-btn-ghost">⌥ GitHub repo</a>
         )}
         {p.youtubeUrl && (
-          <a href={p.youtubeUrl} target="_blank" rel="noreferrer" className="t-btn-ghost">▶ 演示视频</a>
+          <a href={p.youtubeUrl} target="_blank" rel="noreferrer" className="t-btn-ghost">▶ Demo video</a>
         )}
         {prod && (
-          <Link href={`/product/${prod.slug}`} className="t-btn-primary">查看关联商品：{prod.title} →</Link>
+          <Link href={`/product/${prod.slug}`} className="t-btn-primary">View linked listing: {prod.title} →</Link>
         )}
       </div>
 
@@ -55,9 +55,9 @@ export default function ProjectDetailPage() {
       {ch && (
         <div className="t-card p-4 border-tag/40 bg-orange-50/40">
           <div className="text-sm text-slate">
-            本项目是 <Link href={`/challenges/${ch.slug}`} className="text-link font-semibold hover:underline">{ch.title}</Link> 的参赛作品
+            This project is an entry in <Link href={`/challenges/${ch.slug}`} className="text-link font-semibold hover:underline">{ch.title}</Link>
             {entry?.status === "approved" && (
-              <span className="t-tag bg-emerald-100 text-emerald-700 ml-2">✓ 已通过审核 · 押金 ${ch.depositUsd} 已退还</span>
+              <span className="t-tag bg-emerald-100 text-emerald-700 ml-2">✓ Approved · ${ch.depositUsd} deposit refunded</span>
             )}
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function ProjectDetailPage() {
 
       {prod && (
         <p className="t-hint">
-          这个项目页同时出现在商品「{prod.title}」的 Projects 标签下——技术内容留在商品旁边，才能把可信度变成转化率。
+          This page also appears under the Projects tab of "{prod.title}" — technical depth living next to the buy box is what turns credibility into conversion.
         </p>
       )}
     </div>

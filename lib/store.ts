@@ -270,7 +270,7 @@ export const useApp = create<AppState>()(
     })),
 
   projects: seedProjects,
-  addProject: (p) => set((s) => ({ projects: [p, ...s.projects], toast: "项目已发布 — 已关联到商品页" })),
+  addProject: (p) => set((s) => ({ projects: [p, ...s.projects], toast: "Project published — linked to the product page" })),
   likeProject: (id) =>
     set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p)) })),
 
@@ -289,7 +289,7 @@ export const useApp = create<AppState>()(
             }
           : c
       ),
-      toast: "已加入挑战 — 押金进入平台托管，完成任务并通过审核后原路退回",
+      toast: "Joined — your deposit is now in platform escrow. Finish the task, pass review, and it refunds in full",
     })),
   submitEntry: (challengeId, entryId, projectId) =>
     set((s) => ({
@@ -303,7 +303,7 @@ export const useApp = create<AppState>()(
             }
           : c
       ),
-      toast: "作品已提交 — 等待卖家按规则审核",
+      toast: "Entry submitted — awaiting the seller's review against the rules",
     })),
   reviewEntry: (challengeId, entryId, approve, reason) =>
     set((s) => {
@@ -332,10 +332,10 @@ export const useApp = create<AppState>()(
       return {
         challenges,
         toast: approve
-          ? "已通过 — 押金已原路退还给买家（Stripe 托管退款）"
+          ? "Approved — deposit refunded to the buyer (Stripe escrow refund)"
           : stats.tripped
-          ? "拒绝率超过 40%（≥5 次判定）— 熔断触发，本挑战已升级平台复核，拒绝操作已锁定"
-          : "已驳回 — 理由已发送，截止日期前买家可修复后重新提交",
+          ? "Decline rate above 40% over ≥5 decisions — circuit breaker tripped. Rejections locked; challenge escalated to platform review"
+          : "Rejected — reason sent. The buyer can fix and resubmit before the deadline",
       };
     }),
 

@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 import { DEST_COUNTRIES } from "@/lib/shipping";
 
 /**
- * The "需处理订单" queue. Three states matter to a seller:
+ * The orders-to-ship queue. Three states matter to a seller:
  *   1. unfulfilled        → buy a label (or paste tracking for manual lanes)
  *   2. label_purchased    → the parcel left, but the buyer still sees "preparing"
  *                           until it is MARKED shipped — hence the reminder.

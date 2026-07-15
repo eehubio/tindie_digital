@@ -56,7 +56,7 @@ export default function Home() {
           so it belongs on the marketplace front page, not behind a nav item */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-navy">Community projects · 开源项目</h2>
+          <h2 className="text-xl font-bold text-navy">Community projects</h2>
           <Link href="/projects" className="text-link text-sm font-semibold hover:underline">
             View all →
           </Link>
@@ -68,14 +68,14 @@ export default function Home() {
             className="block t-card p-4 mb-4 border-tag/50 hover:shadow-card transition"
           >
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="t-tag bg-tag text-white shrink-0">挑战活动</span>
+              <span className="t-tag bg-tag text-white shrink-0">Challenge</span>
               {openChallenge.sponsors.map((sp) => (
-                <span key={sp.name} className="t-tag bg-red-600 text-white shrink-0">{sp.name} 赞助</span>
+                <span key={sp.name} className="t-tag bg-red-600 text-white shrink-0">Sponsored by {sp.name}</span>
               ))}
               <span className="font-bold text-navy">{openChallenge.title}</span>
               <span className="text-xs text-muted ml-auto shrink-0">
-                押金 ${openChallenge.depositUsd} 完成全退 · {openChallenge.seats - openChallenge.seatsTaken} 个名额 ·
-                截止 {openChallenge.deadline} · 托管中 ${escrowTotal(openChallenge)}
+                ${openChallenge.depositUsd} deposit, refunded on completion · {openChallenge.seats - openChallenge.seatsTaken} seats left ·
+                deadline {openChallenge.deadline} · ${escrowTotal(openChallenge)} in escrow
               </span>
             </div>
           </Link>
@@ -88,7 +88,7 @@ export default function Home() {
               <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card overflow-hidden hover:shadow-card transition block">
                 <div className={`h-24 bg-gradient-to-br ${pj.coverGradient} relative`}>
                   <span className={`absolute top-2 left-2 t-tag ${pj.authorRole === "seller" ? "bg-teal text-white" : "bg-white/90 text-slate"}`}>
-                    {pj.authorRole === "seller" ? "卖家 · 设计走读" : pj.kind === "challenge_entry" ? "买家 · 挑战作品" : "买家 · 装机记录"}
+                    {pj.authorRole === "seller" ? "Seller · walkthrough" : pj.kind === "challenge_entry" ? "Buyer · challenge entry" : "Buyer · build log"}
                   </span>
                 </div>
                 <div className="p-3">

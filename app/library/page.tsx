@@ -59,9 +59,9 @@ export default function LibraryPage() {
                     <Link
                       href={`/projects/new?product=${e.productId}`}
                       className="t-btn-ghost !text-xs text-center"
-                      title="在你买到的这件硬件上发布装机记录或改造项目"
+                      title="Publish a build log or mod project on this hardware you bought"
                     >
-                      发布开源项目
+                      Publish open project
                     </Link>
                     <Link
                       href={`/dispute?product=${encodeURIComponent(e.productTitle)}`}

@@ -9,7 +9,7 @@
 //    makes a listing credible) and by BUYERS (build logs on hardware they
 //    bought, initiated directly from their library).
 //
-// 2. CHALLENGES — the 电子森林 FunPack mechanism: the seller (or a sponsor)
+// 2. CHALLENGES — the FunPack mechanism (eetree.cn): the seller (or a sponsor)
 //    puts up N units at a deposit price and sets a task. Buy a seat, complete
 //    the task before the deadline, publish an open project on Tindie that
 //    meets the rules (completeness, format, video) — and the deposit comes
@@ -76,7 +76,7 @@ export interface ChallengeEntry {
 export interface ChallengeSponsor {
   name: string;
   logoToken: string;
-  contribution: string; // "承担 10 个名额的押金" / "提供元器件礼包"
+  contribution: string; // "funds deposits for 10 seats" / "provides a parts bundle"
 }
 
 export interface ChallengeRule {
@@ -115,28 +115,28 @@ export const seedProjects: OpenProject[] = [
   {
     id: "pj_pocket_intro",
     slug: "pocket-instrument-design-walkthrough",
-    title: "Pocket Instrument：从需求到 4 层板的完整设计走读",
+    title: "Pocket Instrument: a full design walkthrough, from requirements to a 4-layer board",
     authorName: "SuLab",
     authorRole: "seller",
     kind: "product_intro",
     productId: "dp_pocket_assembled",
     summary:
-      "为什么选 RP2350 而不是 STM32H7、模拟前端如何做到 ±20V 输入、4 层板的叠层与阻抗控制、以及三次打样各自失败在哪里。把设计过程摊开，是让买家相信这块板子的最短路径。",
+      "Why RP2350 over an STM32H7, how the analog front end reaches a ±20V input range, the 4-layer stackup and impedance control — and what each of the three board spins got wrong. Laying the design process open is the shortest path to a buyer trusting this board.",
     sections: [
       {
-        heading: "架构取舍：RP2350 的 PIO 就是这台仪器的灵魂",
-        body: "示波器 + 逻辑分析仪 + 信号发生器塞进口袋，瓶颈从来不是主频而是采样通路。RP2350 的 12 个 PIO 状态机可以在不占用 CPU 的情况下做 100 MS/s 的采集编排——这是任何同价位 Cortex-M7 做不到的。代价是模拟性能完全靠外置 AFE，于是有了下一节。",
+        heading: "Architecture trade-off: the RP2350 PIO is the soul of this instrument",
+        body: "Squeezing a scope + logic analyzer + signal generator into a pocket, the bottleneck is never core clock — it's the acquisition path. The RP2350's 12 PIO state machines orchestrate 100 MS/s capture without touching the CPU, which no Cortex-M7 at this price can do. The cost: analog performance rests entirely on an external AFE — hence the next section.",
       },
       {
-        heading: "模拟前端：±20V 输入范围的三次迭代",
-        body: "v0.1 用继电器切换衰减，太贵且有寿命问题；v0.2 换成模拟开关，通道间串扰超标；v1.0 定稿为固定 20:1 衰减 + 可编程增益放大器，BOM 成本降了 $3.20，串扰 −68 dB。三版原理图都在仓库的 /hw/afe-history 目录里。",
+        heading: "Analog front end: three iterations to a ±20V input range",
+        body: "v0.1 used relay-switched attenuation — expensive, with lifetime concerns. v0.2 moved to analog switches — channel crosstalk out of spec. v1.0 settled on a fixed 20:1 divider + PGA: $3.20 off the BOM and −68 dB crosstalk. All three schematic revisions live in /hw/afe-history in the repo.",
       },
       {
-        heading: "打样失败记录（这一节比成功更有用）",
-        body: "第一次：USB-C CC 电阻画成了上拉，被有源线缆识别为 DFP，无法枚举。第二次：晶振离 PIO 采样时钟走线太近，100 MS/s 下出现 0.3% 的采样抖动。第三次通过。所有失败的 Gerber 也保留在仓库里——买这块板的人应该知道它踩过哪些坑。",
+        heading: "Failed board spins (this section is more useful than the successes)",
+        body: "Spin 1: the USB-C CC resistors were drawn as pull-ups, so active cables identified the board as a DFP and it never enumerated. Spin 2: the crystal sat too close to the PIO sampling clock trace — 0.3% sampling jitter at 100 MS/s. Spin 3 passed. The failed Gerbers stay in the repo: anyone buying this board should know which holes it already fell into.",
       },
     ],
-    tags: ["RP2350", "测量仪器", "4层板", "KiCad 8"],
+    tags: ["RP2350", "test-instruments", "4-layer", "KiCad 8"],
     githubUrl: "https://github.com/sulab/pocket-instrument",
     youtubeUrl: "https://youtube.com/watch?v=demo_pocket_intro",
     coverGradient: "from-teal-600 to-emerald-800",
@@ -147,25 +147,25 @@ export const seedProjects: OpenProject[] = [
   {
     id: "pj_can_sniffer",
     slug: "can-bus-decoder-on-pocket-logic-analyzer",
-    title: "用 Pocket Logic Analyzer 做了一个 CAN 总线实时解码器",
+    title: "A real-time CAN bus decoder built on the Pocket Logic Analyzer",
     authorName: "hw_elena",
     authorRole: "buyer",
     kind: "challenge_entry",
     productId: "dp_logic_preorder",
     challengeId: "ch_pla_batch2",
     summary:
-      "挑战任务是「用 PLA 实现一个协议解码器」。我选了 CAN 2.0B：PIO 捕获 + 上位机 Python 解码 + 一个把报文映射到 DBC 信号的小 GUI。视频里演示了在真车 OBD 口上的实时抓包。",
+      "The challenge task: implement a protocol decoder on the PLA. I picked CAN 2.0B — PIO capture, host-side Python decoding, and a small GUI mapping frames to DBC signals. The video shows live capture on a real car's OBD port.",
     sections: [
       {
-        heading: "为什么不用现成的 candump",
-        body: "candump 需要 CAN 收发器和 SocketCAN，而挑战的意义是证明 PLA 的原始采样能力。我直接在 CAN_H/CAN_L 差分信号上采样，用软件做位定时恢复——采样率 100 MS/s 对 500 kbps 的 CAN 来说奢侈到可以做 200 倍过采样。",
+        heading: "Why not just use candump",
+        body: "candump needs a CAN transceiver and SocketCAN; the point of the challenge is to prove the PLA's raw sampling ability. I sample the CAN_H/CAN_L differential pair directly and recover bit timing in software — at 100 MS/s, a 500 kbps bus gets a luxurious 200× oversampling.",
       },
       {
-        heading: "踩坑：位填充（bit stuffing）",
-        body: "解码器第一版在长报文上必然出错，查了两晚上发现是没处理 CAN 的 5 位填充规则。这类协议细节正是这种挑战活动的价值——datasheet 上一行字，实现起来一个晚上。",
+        heading: "The trap: bit stuffing",
+        body: "The first decoder version reliably broke on long frames. Two evenings of debugging later: I hadn't handled CAN's 5-bit stuffing rule. Exactly the kind of protocol detail these challenges exist for — one line in the datasheet, one full evening to implement.",
       },
     ],
-    tags: ["CAN", "逻辑分析仪", "Python", "挑战作品"],
+    tags: ["CAN", "logic-analyzer", "Python", "challenge-entry"],
     githubUrl: "https://github.com/elena-hw/pla-can-decoder",
     youtubeUrl: "https://youtube.com/watch?v=demo_can_decoder",
     coverGradient: "from-amber-500 to-orange-800",
@@ -176,20 +176,20 @@ export const seedProjects: OpenProject[] = [
   {
     id: "pj_kit_buildlog",
     slug: "pocket-instrument-kit-build-log",
-    title: "Pocket Instrument 套件装机记录：两小时、一台热风枪、零返工",
+    title: "Pocket Instrument kit build log: two hours, one hot-air station, zero rework",
     authorName: "mkr_jensen",
     authorRole: "buyer",
     kind: "build_log",
     productId: "dp_pocket_bundle",
     summary:
-      "买的是套件+源文件的 bundle。这篇记录焊接顺序、QFN-60 的热风参数、以及固件首次点亮时的校准流程。给后来人一份可复制的装机清单。",
+      "I bought the kit + source files bundle. This log covers soldering order, hot-air parameters for the QFN-60, and the calibration routine at first firmware boot — a reproducible checklist for whoever builds one next.",
     sections: [
       {
-        heading: "QFN-60 手工贴装参数",
-        body: "锡膏 SAC305，热风 320°C / 风量 40%，预热 90 秒。诀窍是先固定对角两个引脚位置再整体回流——官方文档没写这一步，但它把我的成功率从 50% 提到了 100%（样本量 2，诚实声明）。",
+        heading: "Hand-placing the QFN-60: parameters that worked",
+        body: "SAC305 paste, hot air at 320°C / 40% airflow, 90 s preheat. The trick: tack two diagonal corners before reflowing the whole package — the official docs skip this step, but it took my success rate from 50% to 100% (sample size 2, honestly declared).",
       },
     ],
-    tags: ["装机记录", "QFN", "热风返修"],
+    tags: ["build-log", "QFN", "hot-air-rework"],
     githubUrl: "",
     youtubeUrl: "https://youtube.com/watch?v=demo_buildlog",
     coverGradient: "from-indigo-600 to-violet-900",
@@ -203,7 +203,7 @@ export const seedChallenges: Challenge[] = [
   {
     id: "ch_pla_batch2",
     slug: "pla-protocol-decoder-challenge",
-    title: "Pocket Logic Analyzer 协议解码挑战 · 第 1 期",
+    title: "Pocket Logic Analyzer Protocol Decoder Challenge · Round 1",
     sellerName: "SuLab",
     productId: "dp_logic_preorder",
     productTitle: "Pocket Logic Analyzer — Batch 2",
@@ -211,13 +211,13 @@ export const seedChallenges: Challenge[] = [
     seats: 20,
     seatsTaken: 14,
     task:
-      "用 Pocket Logic Analyzer 实现任意一种串行协议的解码器（UART/SPI/I²C 之外：CAN、LIN、1-Wire、DALI、SWD……越冷门越好），在 Tindie 上开源发布完整项目，并附一段演示视频。按时完成且通过审核，$79 押金全额退还——相当于板子白送。",
+      "Build a decoder for any serial protocol on the Pocket Logic Analyzer — beyond UART/SPI/I²C: CAN, LIN, 1-Wire, DALI, SWD… the more obscure the better. Publish the complete project open-source on Tindie with a demo video. Finish on time and pass review, and the $79 deposit is refunded in full — the board is effectively free.",
     rules: [
-      { id: "r_repo", label: "开源仓库：完整源码 + README（含复现步骤）", required: true },
-      { id: "r_project", label: "在 Tindie 发布项目页并关联本产品（至少 2 个章节：方案 + 踩坑）", required: true },
-      { id: "r_video", label: "YouTube / Bilibili 演示视频（≥2 分钟，展示实际解码过程）", required: true },
-      { id: "r_license", label: "开源协议：MIT / Apache-2.0 / CERN-OHL 任选", required: true },
-      { id: "r_bonus", label: "加分项：解码逻辑跑在 PIO 上而非上位机", required: false },
+      { id: "r_repo", label: "Open repo: full source + README with reproduction steps", required: true },
+      { id: "r_project", label: "Tindie project page linked to this product (≥2 sections: approach + pitfalls)", required: true },
+      { id: "r_video", label: "Demo video, YouTube or similar (≥2 min, showing live decoding)", required: true },
+      { id: "r_license", label: "OSS license: MIT / Apache-2.0 / CERN-OHL — your pick", required: true },
+      { id: "r_bonus", label: "Bonus: decoding logic runs on the PIO, not the host", required: false },
     ],
     opensAt: "2026-06-25",
     deadline: "2026-08-15",
@@ -226,7 +226,7 @@ export const seedChallenges: Challenge[] = [
       {
         name: "DigiKey",
         logoToken: "DK",
-        contribution: "赞助 10 个名额的押金，并为每位完成者提供 $25 元器件代金券",
+        contribution: "Funding deposits for 10 seats, plus a $25 components voucher for every finisher",
       },
     ],
     entries: [
@@ -234,7 +234,7 @@ export const seedChallenges: Challenge[] = [
       { id: "en_2", challengeId: "ch_pla_batch2", buyerName: "probe_master", status: "building" },
       { id: "en_3", challengeId: "ch_pla_batch2", buyerName: "mkr_jensen", status: "building" },
       { id: "en_4", challengeId: "ch_pla_batch2", buyerName: "fpga_wanderer", status: "submitted" },
-      { id: "en_5", challengeId: "ch_pla_batch2", buyerName: "uart_hermit", status: "rejected", decidedAt: "2026-07-12", reason: "视频缺失——规则 3 是硬性要求。截止日期前可修复后重新提交。" },
+      { id: "en_5", challengeId: "ch_pla_batch2", buyerName: "uart_hermit", status: "rejected", decidedAt: "2026-07-12", reason: "Video missing — rule 3 is a hard requirement. Fix and resubmit before the deadline." },
     ],
     escalated: false,
   },

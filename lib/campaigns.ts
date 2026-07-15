@@ -68,7 +68,7 @@ export const seedCampaigns: Campaign[] = [
     review: {
       id: "mr_001",
       partnerId: "pt_huaqiu",
-      partnerName: "Huaqiu (华秋)",
+      partnerName: "Huaqiu",
       status: "dfm_passed",
       dfmScore: 92,
       bomRisk: "low",

@@ -94,8 +94,8 @@ export default function SearchPage() {
         {matchingProjects.length > 0 && (
           <div className="mt-8">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-navy">开源项目 · Community projects</h2>
-              <Link href="/projects" className="text-link text-sm font-semibold hover:underline">全部项目 →</Link>
+              <h2 className="font-bold text-navy">Community projects</h2>
+              <Link href="/projects" className="text-link text-sm font-semibold hover:underline">All projects →</Link>
             </div>
             <div className="space-y-2">
               {matchingProjects.map((pj) => {
@@ -106,7 +106,7 @@ export default function SearchPage() {
                     <div className="min-w-0">
                       <div className="font-semibold text-navy text-sm line-clamp-1">{pj.title}</div>
                       <div className="text-xs text-muted line-clamp-1">
-                        {pj.authorRole === "seller" ? "卖家设计走读" : "买家作品"} · {pj.authorName}
+                        {pj.authorRole === "seller" ? "Seller walkthrough" : "Buyer project"} · {pj.authorName}
                         {prod && <> · ↳ {prod.title}</>}
                       </div>
                     </div>

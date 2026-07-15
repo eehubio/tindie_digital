@@ -45,7 +45,7 @@ export const partners: ServicePartner[] = [
     headquartersCountry: "CN",
     serviceCountries: ["GLOBAL"],
     shippingCountries: ["GLOBAL"],
-    languages: ["English", "中文"],
+    languages: ["English", "Chinese"],
     minLeadDays: 5,
     maxLeadDays: 12,
     fromPricePcb: 8,
@@ -726,7 +726,7 @@ export const seedSellerApplications: SellerApplication[] = [
   },
   {
     id: "app_2",
-    storeName: "深圳微光电子 (Weiguang)",
+    storeName: "Weiguang Electronics (Shenzhen)",
     applicantName: "Chen Li",
     country: "CN",
     productsPlanned: "FPGA dev boards, assembled test jigs",

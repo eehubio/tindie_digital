@@ -11,7 +11,7 @@ import { useApp } from "@/lib/store";
 const TEMPLATES: { id: string; label: string; tone: string; body: string }[] = [
   {
     id: "shipped",
-    label: "发货通知 · Shipping notice",
+    label: "Shipping notice",
     tone: "bg-teal-light text-teal-dark",
     body: `Hi {buyer_name},
 
@@ -27,7 +27,7 @@ Thanks for supporting an independent maker!
   },
   {
     id: "delay",
-    label: "延迟说明 · Delay notice",
+    label: "Delay notice",
     tone: "bg-amber-100 text-amber-800",
     body: `Hi {buyer_name},
 
@@ -42,7 +42,7 @@ Sorry for the wait, and thanks for your patience.
   },
   {
     id: "oos",
-    label: "缺货说明 · Out-of-stock notice",
+    label: "Out-of-stock notice",
     tone: "bg-orange-100 text-orange-800",
     body: `Hi {buyer_name},
 
@@ -57,7 +57,7 @@ Just reply 1 or 2. Either way, sorry — I'd rather tell you now than go quiet.
   },
   {
     id: "refund",
-    label: "退款确认 · Refund confirmation",
+    label: "Refund confirmation",
     tone: "bg-red-100 text-red-700",
     body: `Hi {buyer_name},
 
@@ -104,7 +104,7 @@ export default function MessagesPage() {
 
       {/* -------- Unanswered questions -------- */}
       <section>
-        <h2 className="font-bold text-navy mb-2">待回复 · Unanswered ({open.length})</h2>
+        <h2 className="font-bold text-navy mb-2">Unanswered ({open.length})</h2>
         {open.length === 0 ? (
           <div className="t-card p-6 text-center text-muted text-sm">Inbox zero.</div>
         ) : (
@@ -142,7 +142,7 @@ export default function MessagesPage() {
 
       {/* -------- Templates -------- */}
       <section id="templates">
-        <h2 className="font-bold text-navy mb-2">订单消息模版 · Order message templates</h2>
+        <h2 className="font-bold text-navy mb-2">Order message templates</h2>
         <div className="grid md:grid-cols-2 gap-3">
           {TEMPLATES.map((t) => (
             <div key={t.id} className="t-card p-4 flex flex-col">

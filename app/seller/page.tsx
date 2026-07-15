@@ -15,10 +15,10 @@ export default function SellerDashboard() {
   const unanswered = questions.filter((q) => !q.answer);
 
   const kpis: { label: string; value: string; href: string; hint: string; alert?: boolean }[] = [
-    { label: "可提现余额 · Available", value: "$1,284.50", href: "/seller/payouts", hint: "Withdraw via Stripe / Wise →" },
-    { label: "待结算 · Clearing", value: "$342.18", href: "/seller/payouts#clearing", hint: "Releases T+2 (Stripe corridor) →" },
-    { label: "需处理订单 · To ship", value: String(toShip.length + shippedNotMarked.length), href: "/seller/orders-action", hint: "Buy labels & mark shipped →", alert: overdue.length > 0 },
-    { label: "待回复消息 · Unanswered", value: String(unanswered.length), href: "/seller/messages", hint: "Buyers are waiting →", alert: unanswered.length > 0 },
+    { label: "Available balance", value: "$1,284.50", href: "/seller/payouts", hint: "Withdraw via Stripe / Wise →" },
+    { label: "Clearing", value: "$342.18", href: "/seller/payouts#clearing", hint: "Releases T+2 (Stripe corridor) →" },
+    { label: "Orders to ship", value: String(toShip.length + shippedNotMarked.length), href: "/seller/orders-action", hint: "Buy labels & mark shipped →", alert: overdue.length > 0 },
+    { label: "Unanswered messages", value: String(unanswered.length), href: "/seller/messages", hint: "Buyers are waiting →", alert: unanswered.length > 0 },
   ];
 
   // ---- "Needs your attention" — each row links to the page that fixes it. ----
@@ -56,7 +56,7 @@ export default function SellerDashboard() {
 
       {/* Needs your attention */}
       <div className="t-card p-4">
-        <h2 className="font-bold text-navy mb-3">需要你处理 · Needs your attention</h2>
+        <h2 className="font-bold text-navy mb-3">Needs your attention</h2>
         <div className="space-y-2">
           {attention.map((a, i) => (
             <div key={i} className={`flex items-center gap-3 rounded-lg border p-3 ${a.tone === "warn" ? "border-cta/40 bg-orange-50/50" : "border-line bg-panel/50"}`}>

@@ -42,7 +42,7 @@ export default function ProductCard({ p }: { p: DigitalProduct }) {
         <span className="absolute bottom-2 left-2 text-white/90 text-xs font-mono">{p.kicadVersion}</span>
         {projectCount > 0 && (
           <span className="absolute bottom-2 right-2 t-tag bg-black/50 text-white backdrop-blur-sm">
-            ⌘ {projectCount} 个开源项目
+            ⌘ {projectCount} open project{projectCount > 1 ? "s" : ""}
           </span>
         )}
       </div>

@@ -555,7 +555,7 @@ function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
     <div className="space-y-4">
       {linked.length === 0 ? (
         <div className="t-card p-6 text-center text-muted text-sm">
-          还没有关联的开源项目。买过这件商品？在你的 Library 里可以直接为它发布装机记录。
+          No open projects linked yet. Bought this item? You can publish a build log for it straight from your Library.
         </div>
       ) : (
         linked.map((pj) => (
@@ -564,9 +564,9 @@ function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`t-tag ${pj.authorRole === "seller" ? "bg-teal text-white" : "bg-panel text-slate"}`}>
-                  {pj.authorRole === "seller" ? "卖家 · 设计走读" : pj.kind === "challenge_entry" ? "买家 · 挑战作品" : "买家 · 装机记录"}
+                  {pj.authorRole === "seller" ? "Seller · design walkthrough" : pj.kind === "challenge_entry" ? "Buyer · challenge entry" : "Buyer · build log"}
                 </span>
-                {pj.youtubeUrl && <span className="text-xs text-muted">▶ 含视频</span>}
+                {pj.youtubeUrl && <span className="text-xs text-muted">▶ video</span>}
               </div>
               <h3 className="font-semibold text-navy mt-1 line-clamp-1">{pj.title}</h3>
               <p className="text-xs text-muted mt-0.5 line-clamp-2">{pj.summary}</p>
@@ -576,8 +576,8 @@ function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
         ))
       )}
       <p className="t-hint">
-        为什么这个标签存在：AI 能写出漂亮的商品描述，但写不出「第三次打样才通过、前两次失败在哪」。
-        设计走读和真实买家的作品，是营销文案买不到的可信度。
+        Why this tab exists: AI can write a beautiful product description, but it can't write "the third spin passed —
+        here's where the first two failed." Design walkthroughs and real buyers' builds are credibility marketing copy can't buy.
       </p>
     </div>
   );
