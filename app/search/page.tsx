@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import { useApp } from "@/lib/store";
 
@@ -14,8 +15,21 @@ const CATEGORIES = [
 
 export default function SearchPage() {
   const products = useApp((st) => st.allProducts)();
+  const projects = useApp((st) => st.projects);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+
+  // Open projects matching the same query — a buyer searching "logic analyzer"
+  // should find the CAN-decoder build alongside the board itself. The project
+  // IS marketing for the listing; hiding it from search wastes it.
+  const matchingProjects = q
+    ? projects.filter(
+        (pj) =>
+          pj.title.toLowerCase().includes(q.toLowerCase()) ||
+          pj.summary.toLowerCase().includes(q.toLowerCase()) ||
+          pj.tags.some((t) => t.toLowerCase().includes(q.toLowerCase()))
+      )
+    : projects.slice(0, 2);
 
   const filtered = products.filter((p) => {
     const matchesCat = cat === "all" || p.category === cat;
@@ -73,6 +87,34 @@ export default function SearchPage() {
             {filtered.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}
+          </div>
+        )}
+
+        {/* Open projects matching this search */}
+        {matchingProjects.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-navy">开源项目 · Community projects</h2>
+              <Link href="/projects" className="text-link text-sm font-semibold hover:underline">全部项目 →</Link>
+            </div>
+            <div className="space-y-2">
+              {matchingProjects.map((pj) => {
+                const prod = products.find((x) => x.id === pj.productId);
+                return (
+                  <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card p-3 flex items-center gap-3 hover:shadow-card transition">
+                    <div className={`w-16 h-11 rounded-md bg-gradient-to-br ${pj.coverGradient} shrink-0`} />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-navy text-sm line-clamp-1">{pj.title}</div>
+                      <div className="text-xs text-muted line-clamp-1">
+                        {pj.authorRole === "seller" ? "卖家设计走读" : "买家作品"} · {pj.authorName}
+                        {prod && <> · ↳ {prod.title}</>}
+                      </div>
+                    </div>
+                    <span className="ml-auto text-xs text-muted shrink-0">♥ {pj.likes}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

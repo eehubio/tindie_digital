@@ -4,9 +4,13 @@
 import ProductCard from "@/components/ProductCard";
 import { useApp } from "@/lib/store";
 import Link from "next/link";
+import { escrowTotal } from "@/lib/projects";
 
 export default function Home() {
   const products = useApp((st) => st.allProducts)();
+  const { projects, challenges } = useApp();
+  const openChallenge = challenges.find((c) => c.status === "open");
+  const latestProjects = projects.slice(0, 3);
   return (
     <div className="space-y-8">
       {/* Hero — states the thesis: design → make → sell */}
@@ -45,6 +49,60 @@ export default function Home() {
             <p className="text-xs text-muted mt-1">{d}</p>
           </div>
         ))}
+      </section>
+
+
+      {/* Community: open projects & challenges — content sells the next unit,
+          so it belongs on the marketplace front page, not behind a nav item */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-navy">Community projects · 开源项目</h2>
+          <Link href="/projects" className="text-link text-sm font-semibold hover:underline">
+            View all →
+          </Link>
+        </div>
+
+        {openChallenge && (
+          <Link
+            href={`/challenges/${openChallenge.slug}`}
+            className="block t-card p-4 mb-4 border-tag/50 hover:shadow-card transition"
+          >
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="t-tag bg-tag text-white shrink-0">挑战活动</span>
+              {openChallenge.sponsors.map((sp) => (
+                <span key={sp.name} className="t-tag bg-red-600 text-white shrink-0">{sp.name} 赞助</span>
+              ))}
+              <span className="font-bold text-navy">{openChallenge.title}</span>
+              <span className="text-xs text-muted ml-auto shrink-0">
+                押金 ${openChallenge.depositUsd} 完成全退 · {openChallenge.seats - openChallenge.seatsTaken} 个名额 ·
+                截止 {openChallenge.deadline} · 托管中 ${escrowTotal(openChallenge)}
+              </span>
+            </div>
+          </Link>
+        )}
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {latestProjects.map((pj) => {
+            const prod = products.find((x) => x.id === pj.productId);
+            return (
+              <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card overflow-hidden hover:shadow-card transition block">
+                <div className={`h-24 bg-gradient-to-br ${pj.coverGradient} relative`}>
+                  <span className={`absolute top-2 left-2 t-tag ${pj.authorRole === "seller" ? "bg-teal text-white" : "bg-white/90 text-slate"}`}>
+                    {pj.authorRole === "seller" ? "卖家 · 设计走读" : pj.kind === "challenge_entry" ? "买家 · 挑战作品" : "买家 · 装机记录"}
+                  </span>
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold text-navy leading-snug line-clamp-2">{pj.title}</h3>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted">
+                    <span>{pj.authorName}</span>
+                    <span className="ml-auto">♥ {pj.likes}</span>
+                  </div>
+                  {prod && <div className="mt-2 pt-2 border-t border-line text-xs text-link truncate">↳ {prod.title}</div>}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
       <section>

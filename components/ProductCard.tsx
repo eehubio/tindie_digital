@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DigitalProduct } from "@/lib/types";
 import { VerifyBadge, Stars } from "./ui";
+import { useApp } from "@/lib/store";
 
 const CATEGORY_LABEL: Record<string, string> = {
   kicad_full_project: "KiCad Project",
@@ -17,6 +18,10 @@ const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 export default function ProductCard({ p }: { p: DigitalProduct }) {
+  // Open projects linked to this listing — a design walkthrough or a real
+  // buyer's build log is credibility a browsing buyer should see BEFORE the
+  // click, not discover behind a tab.
+  const projectCount = useApp((st) => st.projects).filter((x) => x.productId === p.id).length;
   const from = p.price ?? (p.licenses.length ? Math.min(...p.licenses.map((l) => l.price)) : 0);
   const isPreorder = !!p.preorderCampaignSlug;
   const lowStock = p.productType !== "digital" && (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 20;
@@ -35,6 +40,11 @@ export default function ProductCard({ p }: { p: DigitalProduct }) {
           </span>
         )}
         <span className="absolute bottom-2 left-2 text-white/90 text-xs font-mono">{p.kicadVersion}</span>
+        {projectCount > 0 && (
+          <span className="absolute bottom-2 right-2 t-tag bg-black/50 text-white backdrop-blur-sm">
+            ⌘ {projectCount} 个开源项目
+          </span>
+        )}
       </div>
       <div className="p-3">
         <h3 className="font-semibold text-navy leading-snug group-hover:text-teal-dark line-clamp-2">
