@@ -117,7 +117,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 text-sm">
           <span className="text-teal-dark font-semibold">View as:</span>
           <div className="flex rounded-md overflow-hidden border border-teal/30">
-            {(["buyer", "seller", "partner", "admin"] as Role[]).map((r) => (
+            {(["buyer", "seller", "admin"] as Role[]).map((r) => (
               <button
                 key={r}
                 onClick={() => setRole(r)}

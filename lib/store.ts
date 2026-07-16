@@ -489,6 +489,42 @@ export const useApp = create<AppState>()(
       }),
       // Avoid SSR hydration mismatch: rehydrate manually after mount (Shell does it).
       skipHydration: true,
+      // -------------------------------------------------------------------
+      // Persisted-state versioning. localStorage outlives deploys: a client
+      // that stored projects BEFORE components[]/logs[] existed (or before
+      // the English-content pass) will feed stale shapes into new pages and
+      // crash them. A migration is the structural fix; scattering `?? []`
+      // through every consumer is the patch we don't do.
+      //
+      // Policy per collection:
+      //   - Seed-origin rows (id matches a seed) → REPLACE with current seed.
+      //   - User-created rows → keep, but NORMALIZE missing fields.
+      //   - Unknown/missing collections → fall back to seeds via merge below.
+      // -------------------------------------------------------------------
+      version: 2,
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const st = (persisted ?? {}) as Record<string, unknown>;
+        if (fromVersion < 2) {
+          const seedProjIds = new Set(seedProjects.map((x) => x.id));
+          const oldProjects = Array.isArray(st.projects) ? (st.projects as OpenProject[]) : [];
+          st.projects = [
+            // current seeds first (English, full shape)
+            ...seedProjects,
+            // user-created rows, normalized
+            ...oldProjects
+              .filter((x) => x && !seedProjIds.has(x.id))
+              .map((x) => ({ ...x, components: x.components ?? [], logs: x.logs ?? [], tags: x.tags ?? [] })),
+          ];
+          const seedChIds = new Set(seedChallenges.map((x) => x.id));
+          const oldCh = Array.isArray(st.challenges) ? (st.challenges as Challenge[]) : [];
+          st.challenges = [...seedChallenges, ...oldCh.filter((x) => x && !seedChIds.has(x.id))];
+          // rewards didn't exist before v2 — drop anything stale, take seeds.
+          st.rewardPrograms = seedRewardPrograms;
+          st.rewardGrants = seedRewardGrants;
+          if (typeof st.walletCredit !== "number") st.walletCredit = 5;
+        }
+        return st;
+      },
     }
   )
 );
