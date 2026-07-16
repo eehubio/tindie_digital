@@ -1,6 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { DEST_COUNTRIES } from "@/lib/shipping";
 
@@ -17,24 +19,33 @@ import { DEST_COUNTRIES } from "@/lib/shipping";
  * one window.print() call. The app chrome carries print:hidden; @page and
  * break-after do the pagination. No per-order clicking, no preview loop.
  */
-export default function PackslipsPage() {
+function PackslipsInner() {
   const { fulfillments } = useApp();
-  const unshipped = fulfillments.filter(
-    (f) => f.status === "unfulfilled" || f.status === "label_purchased"
-  );
+  const sp = useSearchParams();
+  const only = sp.get("order");
+  // Two entries, one renderer: the batch (all unshipped) and the single-order
+  // reprint from Fulfillment (?order=<id>, any status — reprinting a slip for
+  // a shipped order is a normal support task).
+  const unshipped = only
+    ? fulfillments.filter((f) => f.id === only)
+    : fulfillments.filter((f) => f.status === "unfulfilled" || f.status === "label_purchased");
 
   return (
     <div>
       {/* Screen-only toolbar */}
       <div className="print:hidden mb-6 flex items-center gap-3 flex-wrap">
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-navy">Packing slips — all unshipped orders</h1>
+          <h1 className="text-xl font-bold text-navy">
+            {only ? `Packing slip — ${unshipped[0]?.orderRef ?? "order"}` : "Packing slips — all unshipped orders"}
+          </h1>
           <p className="text-sm text-muted mt-1">
             {unshipped.length} slip{unshipped.length === 1 ? "" : "s"} below, one per page. Hit print once —
             that&apos;s the whole point.
           </p>
         </div>
-        <Link href="/seller/orders-action" className="t-btn-ghost">← Back to orders</Link>
+        <Link href={only ? "/seller/operations?tab=fulfillment" : "/seller/orders-action"} className="t-btn-ghost">
+          ← Back
+        </Link>
         <button className="t-btn-cta" onClick={() => window.print()} disabled={unshipped.length === 0}>
           🖨 Print all ({unshipped.length})
         </button>
@@ -119,5 +130,14 @@ export default function PackslipsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function PackslipsPage() {
+  return (
+    <Suspense fallback={null}>
+      <PackslipsInner />
+    </Suspense>
   );
 }

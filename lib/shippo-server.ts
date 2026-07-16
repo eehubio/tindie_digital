@@ -196,15 +196,19 @@ export function mockTransactionResponse(rate: string, meta?: { provider?: string
 // one-page PDF with the shipment facts, so "download label → print" works
 // end-to-end even in mock mode.
 // ---------------------------------------------------------------------------
-export function labelPdf(lines: string[]): Uint8Array {
+export function labelPdf(
+  lines: string[],
+  opts: { w?: number; h?: number; fontSize?: number } = {}
+): Uint8Array {
+  const { w = 288, h = 432, fontSize = 12 } = opts; // default: 4x6in label
   const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  let text = "BT /F1 12 Tf 18 400 Td 16 TL\n";
+  let text = `BT /F1 ${fontSize} Tf 24 ${h - 40} Td ${Math.round(fontSize * 1.35)} TL\n`;
   for (const l of lines) text += `(${esc(l)}) Tj T*\n`;
   text += "ET";
   const objs = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 288 432] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>`,
     `<< /Length ${text.length} >>\nstream\n${text}\nendstream`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>",
   ];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/lib/store";
 import ShippoFlow from "@/components/ShippoFlow";
 import { SectionTitle } from "@/components/ui";
@@ -137,8 +138,25 @@ export default function FulfillmentPage() {
                       >
                         Mark as shipped &amp; notify buyer
                       </button>
-                      <button className="t-btn-ghost">Print packing slip</button>
-                      <button className="t-btn-ghost">Download commercial invoice</button>
+                      <Link href={`/seller/packslips?order=${f.id}`} className="t-btn-ghost">
+                        Print packing slip
+                      </Link>
+                      {f.destination !== "US" && (
+                        <a
+                          href={`/api/shippo/invoice?ref=${encodeURIComponent(f.orderRef)}&buyer=${encodeURIComponent(
+                            f.buyerName
+                          )}&addr=${encodeURIComponent((f.address ?? []).slice(1).join("|"))}&item=${encodeURIComponent(
+                            f.productTitle
+                          )}&qty=${f.qty ?? 1}&value=${(f.goodsValue / (f.qty ?? 1)).toFixed(2)}&tn=${encodeURIComponent(
+                            f.tracking ?? ""
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="t-btn-ghost"
+                        >
+                          Download commercial invoice (PDF)
+                        </a>
+                      )}
                     </div>
                   </div>
 
