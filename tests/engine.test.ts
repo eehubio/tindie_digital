@@ -168,3 +168,47 @@ describe("batch label quotes", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Project rewards — eligibility gating & budget cap
+// ---------------------------------------------------------------------------
+import { checkRewardEligibility, applyGrantToProgram, RewardProgram, RewardGrant } from "../lib/rewards";
+
+const program: RewardProgram = {
+  id: "rp_t", productId: "dp_x", productTitle: "X", sellerName: "S",
+  type: "credit", creditUsd: 5, budgetUsd: 20, spentUsd: 15, status: "active", blurb: "",
+};
+const goodProject = {
+  summary: "A real write-up",
+  sections: [
+    { heading: "a", body: "x".repeat(100) },
+    { heading: "b", body: "y".repeat(100) },
+  ],
+  logsCount: 0,
+};
+
+describe("project rewards", () => {
+  it("requires a verified purchase — no purchase, no reward", () => {
+    expect(checkRewardEligibility({ program, project: goodProject, buyerHasPurchase: false, alreadyGrantedForProduct: false }).fail)
+      .toBe("no_verified_purchase");
+  });
+
+  it("enforces the quality bar and one-grant-per-product", () => {
+    const thin = { summary: "ok", sections: [{ heading: "a", body: "short" }], logsCount: 0 };
+    expect(checkRewardEligibility({ program, project: thin, buyerHasPurchase: true, alreadyGrantedForProduct: false }).fail)
+      .toBe("below_quality_bar");
+    expect(checkRewardEligibility({ program, project: goodProject, buyerHasPurchase: true, alreadyGrantedForProduct: true }).fail)
+      .toBe("already_rewarded_for_product");
+    expect(checkRewardEligibility({ program, project: goodProject, buyerHasPurchase: true, alreadyGrantedForProduct: false }).ok)
+      .toBe(true);
+  });
+
+  it("budget cap auto-exhausts the program — never an unbounded liability", () => {
+    const grant: RewardGrant = { id: "g", programId: "rp_t", projectId: "p", buyerName: "b", type: "credit", valueUsd: 5, status: "approved", createdAt: "2026-07-16" };
+    const after = applyGrantToProgram(program, grant);
+    expect(after.spentUsd).toBe(20);
+    expect(after.status).toBe("exhausted");
+    expect(checkRewardEligibility({ program: after, project: goodProject, buyerHasPurchase: true, alreadyGrantedForProduct: false }).ok)
+      .toBe(false);
+  });
+});

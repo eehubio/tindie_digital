@@ -11,6 +11,10 @@ import {
 import { requestDownload } from "./entitlements";
 import { ListingDraft, newDraft } from "./draft";
 import { OpenProject, Challenge, seedProjects, seedChallenges, declineStats } from "./projects";
+import {
+  RewardProgram, RewardGrant, seedRewardPrograms, seedRewardGrants,
+  checkRewardEligibility, applyGrantToProgram,
+} from "./rewards";
 import { DownloadGrant, DigitalProduct, ProductQuestion, VersionNote, ServicePartner, SellerApplication, ProductSubmission } from "./types";
 import { ShipProfile, seedShipProfiles, Fulfillment } from "./shipping";
 
@@ -87,6 +91,14 @@ interface AppState {
   /** FunPack-style challenges: escrowed deposit, task, rules, refund on approval. */
   challenges: Challenge[];
   joinChallenge: (id: string) => void;
+
+  /** Project rewards — seller-funded credits/coupons for published projects. */
+  rewardPrograms: RewardProgram[];
+  rewardGrants: RewardGrant[];
+  /** Buyer demo wallet: Tindie credit granted by approved rewards. */
+  walletCredit: number;
+  upsertRewardProgram: (p: RewardProgram) => void;
+  decideGrant: (id: string, approve: boolean, reason?: string) => void;
   submitEntry: (challengeId: string, entryId: string, projectId: string) => void;
   reviewEntry: (challengeId: string, entryId: string, approve: boolean, reason?: string) => void;
 
@@ -270,9 +282,92 @@ export const useApp = create<AppState>()(
     })),
 
   projects: seedProjects,
-  addProject: (p) => set((s) => ({ projects: [p, ...s.projects], toast: "Project published — linked to the product page" })),
+  addProject: (p) =>
+    set((s) => {
+      // Reward evaluation happens server-side at publish in the real system.
+      // For every component that maps to a listing with an active program:
+      // verified purchase + quality bar + one-per-product → a PENDING grant.
+      const newGrants: RewardGrant[] = [];
+      if (p.authorRole === "buyer") {
+        for (const c of p.components) {
+          if (!c.productId) continue;
+          const program = s.rewardPrograms.find((rp) => rp.productId === c.productId);
+          if (!program) continue;
+          const buyerHasPurchase =
+            s.entitlements.some((e) => e.productId === c.productId && e.status === "active") ||
+            c.productId.startsWith("dp_pocket") || c.productId === "dp_logic_preorder"; // demo: physical orders count too
+          const alreadyGranted = s.rewardGrants.some(
+            (g) => g.buyerName === p.authorName && g.status !== "denied" &&
+                   s.rewardPrograms.find((rp) => rp.id === g.programId)?.productId === c.productId
+          );
+          const ok = checkRewardEligibility({
+            program,
+            project: { sections: p.sections, summary: p.summary, logsCount: p.logs.length },
+            buyerHasPurchase,
+            alreadyGrantedForProduct: alreadyGranted,
+          });
+          if (ok.ok) {
+            newGrants.push({
+              id: "rg_" + Math.random().toString(36).slice(2, 7),
+              programId: program.id,
+              projectId: p.id,
+              buyerName: p.authorName,
+              type: program.type,
+              valueUsd: program.type === "credit" ? program.creditUsd! : Math.round(program.budgetUsd / 60),
+              couponPct: program.couponPct,
+              status: "pending",
+              createdAt: new Date().toISOString().slice(0, 10),
+            });
+          }
+        }
+      }
+      return {
+        projects: [p, ...s.projects],
+        rewardGrants: [...newGrants, ...s.rewardGrants],
+        toast:
+          newGrants.length > 0
+            ? "Project published — reward claim created, pending seller approval"
+            : "Project published — linked to the product page",
+      };
+    }),
   likeProject: (id) =>
     set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p)) })),
+
+  rewardPrograms: seedRewardPrograms,
+  rewardGrants: seedRewardGrants,
+  walletCredit: 5, // mkr_jensen's approved seed grant
+  upsertRewardProgram: (p) =>
+    set((s) => ({
+      rewardPrograms: s.rewardPrograms.some((x) => x.id === p.id)
+        ? s.rewardPrograms.map((x) => (x.id === p.id ? p : x))
+        : [p, ...s.rewardPrograms],
+      toast: "Reward program saved — it now shows on the product page",
+    })),
+  decideGrant: (id, approve, reason) =>
+    set((s) => {
+      const g = s.rewardGrants.find((x) => x.id === id);
+      if (!g || g.status !== "pending") return {};
+      const program = s.rewardPrograms.find((p) => p.id === g.programId)!;
+      const grants = s.rewardGrants.map((x) =>
+        x.id === id
+          ? { ...x, status: (approve ? "approved" : "denied") as "approved" | "denied",
+              reason: approve ? undefined : reason,
+              decidedAt: new Date().toISOString().slice(0, 10) }
+          : x
+      );
+      return {
+        rewardGrants: grants,
+        rewardPrograms: approve
+          ? s.rewardPrograms.map((p) => (p.id === program.id ? applyGrantToProgram(p, g) : p))
+          : s.rewardPrograms,
+        walletCredit: approve && g.type === "credit" ? s.walletCredit + g.valueUsd : s.walletCredit,
+        toast: approve
+          ? g.type === "credit"
+            ? `Approved — $${g.valueUsd} Tindie credit added to the buyer's wallet`
+            : `Approved — ${g.couponPct}% coupon issued to the buyer`
+          : "Denied — reason sent to the buyer",
+      };
+    }),
 
   challenges: seedChallenges,
   joinChallenge: (id) =>
@@ -385,6 +480,9 @@ export const useApp = create<AppState>()(
         shipProfiles: s.shipProfiles,
         projects: s.projects,
         challenges: s.challenges,
+        rewardPrograms: s.rewardPrograms,
+        rewardGrants: s.rewardGrants,
+        walletCredit: s.walletCredit,
         entitlements: s.entitlements,
         fulfillments: s.fulfillments,
         cart: s.cart,

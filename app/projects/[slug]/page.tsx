@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 
 export default function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { projects, likeProject, challenges } = useApp();
+  const { projects, likeProject, challenges, rewardPrograms } = useApp();
   const products = useApp((st) => st.allProducts)();
   const p = projects.find((x) => x.slug === slug);
 
@@ -33,6 +33,12 @@ export default function ProjectDetailPage() {
         </div>
         <h1 className="text-2xl font-bold text-navy mt-2">{p.title}</h1>
         <p className="text-slate mt-2">{p.summary}</p>
+        {(p.difficulty || p.hoursSpent) && (
+          <div className="flex gap-2 mt-2 text-xs text-muted">
+            {p.difficulty && <span className="t-tag bg-panel text-slate capitalize">{p.difficulty}</span>}
+            {p.hoursSpent && <span className="t-tag bg-panel text-slate">~{p.hoursSpent} h</span>}
+          </div>
+        )}
         <div className="flex gap-1.5 mt-3 flex-wrap">
           {p.tags.map((t) => <span key={t} className="t-tag bg-panel text-slate">{t}</span>)}
         </div>
@@ -50,6 +56,39 @@ export default function ProjectDetailPage() {
           <Link href={`/product/${prod.slug}`} className="t-btn-primary">View linked listing: {prod.title} →</Link>
         )}
       </div>
+
+      {/* Things used in this project — hackster's pattern, and the commerce
+          link: every Tindie component points back at a listing. */}
+      {p.components.length > 0 && (
+        <div className="t-card p-5">
+          <h2 className="font-bold text-navy mb-3">Things used in this project</h2>
+          <ul className="space-y-2">
+            {p.components.map((c, i) => {
+              const cp = products.find((x) => x.id === c.productId);
+              const program = rewardPrograms.find((rp) => rp.productId === c.productId && rp.status === "active");
+              return (
+                <li key={i} className="flex items-center gap-3 text-sm flex-wrap">
+                  <span className="font-mono text-xs text-muted w-8 shrink-0">×{c.qty}</span>
+                  {cp ? (
+                    <Link href={`/product/${cp.slug}`} className="text-link font-medium hover:underline">
+                      {c.name} →
+                    </Link>
+                  ) : (
+                    <span className="text-slate">{c.name}</span>
+                  )}
+                  {c.note && <span className="text-xs text-muted">({c.note})</span>}
+                  {cp && <span className="t-tag bg-teal-light text-teal-dark">On Tindie</span>}
+                  {program && (
+                    <span className="t-tag bg-emerald-100 text-emerald-700">
+                      🎁 rewards projects: {program.type === "credit" ? `$${program.creditUsd} credit` : `${program.couponPct}% coupon`}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Challenge context */}
       {ch && (
@@ -72,6 +111,24 @@ export default function ProjectDetailPage() {
           </div>
         ))}
       </div>
+
+      {p.logs.length > 0 && (
+        <div className="t-card p-5">
+          <h2 className="font-bold text-navy mb-3">Build log</h2>
+          <div className="space-y-4 border-l-2 border-teal/30 pl-4">
+            {p.logs.map((l, i) => (
+              <div key={i}>
+                <div className="text-xs text-muted font-mono">{l.date}</div>
+                <div className="font-semibold text-navy text-sm mt-0.5">{l.title}</div>
+                <p className="text-sm text-slate mt-1 leading-relaxed">{l.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="t-hint mt-3">
+            A project with logs is alive — &ldquo;last updated&rdquo; is a trust signal buyers actually read.
+          </p>
+        </div>
+      )}
 
       {prod && (
         <p className="t-hint">

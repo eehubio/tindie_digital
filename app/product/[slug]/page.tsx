@@ -548,11 +548,30 @@ function QATab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
 // build logs, attached to THIS listing. Technical depth next to the buy box.
 // ---------------------------------------------------------------------------
 function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
-  const { projects } = useApp();
-  const linked = projects.filter((x) => x.productId === p.id);
+  const { projects, rewardPrograms } = useApp();
+  const linked = projects.filter(
+    (x) => x.productId === p.id || x.components.some((c) => c.productId === p.id)
+  );
+  const program = rewardPrograms.find((rp) => rp.productId === p.id && rp.status === "active");
 
   return (
     <div className="space-y-4">
+      {program && (
+        <div className="t-card p-4 border-emerald-300 bg-emerald-50/50 flex items-start gap-3 flex-wrap">
+          <span className="text-2xl">🎁</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-navy text-sm">
+              This seller rewards published projects:{" "}
+              {program.type === "credit" ? `$${program.creditUsd} Tindie credit` : `${program.couponPct}% off your next order`}
+            </div>
+            <p className="text-xs text-slate mt-0.5">{program.blurb}</p>
+            <p className="text-xs text-muted mt-1">
+              Requires a verified purchase and an approved write-up (≥2 substantive sections or a build log). One reward per buyer per product.
+            </p>
+          </div>
+          <Link href={`/projects/new?product=${p.id}`} className="t-btn-cta shrink-0">Publish yours →</Link>
+        </div>
+      )}
       {linked.length === 0 ? (
         <div className="t-card p-6 text-center text-muted text-sm">
           No open projects linked yet. Bought this item? You can publish a build log for it straight from your Library.

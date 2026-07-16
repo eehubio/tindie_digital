@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
+import { ProjectComponent } from "@/lib/projects";
 
 /**
  * Publish an open project. Reached three ways:
@@ -30,6 +31,14 @@ function NewProjectForm() {
   const [github, setGithub] = useState("");
   const [youtube, setYoutube] = useState("");
   const [sections, setSections] = useState([{ heading: "", body: "" }]);
+  // Things used in this project (hackster-style). Tindie listings are
+  // checkboxes; free-text externals can be added inline.
+  const [compSel, setCompSel] = useState<Record<string, boolean>>(
+    sp.get("product") ? { [sp.get("product")!]: true } : ch?.productId ? { [ch.productId]: true } : {}
+  );
+  const [extName, setExtName] = useState("");
+  const [externals, setExternals] = useState<ProjectComponent[]>([]);
+  const rewardPrograms = useApp((st) => st.rewardPrograms);
 
   const prod = products.find((p) => p.id === productId);
   const requiredOk =
@@ -38,6 +47,10 @@ function NewProjectForm() {
 
   function publish() {
     const id = "pj_" + Math.random().toString(36).slice(2, 7);
+    const components: ProjectComponent[] = [
+      ...products.filter((x) => compSel[x.id]).map((x) => ({ name: x.title, qty: 1, productId: x.id })),
+      ...externals,
+    ];
     addProject({
       id,
       slug: title.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) + "-" + id.slice(-4),
@@ -49,6 +62,8 @@ function NewProjectForm() {
       challengeId,
       summary: summary.trim(),
       sections: sections.filter((s) => s.heading.trim() && s.body.trim()),
+      components,
+      logs: [],
       tags: ch ? ["challenge-entry"] : [],
       githubUrl: github.trim() || undefined,
       youtubeUrl: youtube.trim() || undefined,
@@ -110,6 +125,51 @@ function NewProjectForm() {
             <input className="t-input" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" />
           </div>
         </div>
+      </div>
+
+      <div className="t-card p-5">
+        <h2 className="font-semibold text-navy mb-1">Things used in this project</h2>
+        <p className="t-hint mb-3">
+          Tick the Tindie listings you used — the project will appear on each product&apos;s Projects tab, and
+          listings with a reward program pay out on approval.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {products.map((x) => {
+            const program = rewardPrograms.find((rp) => rp.productId === x.id && rp.status === "active");
+            return (
+              <label key={x.id} className={`flex items-start gap-2 border rounded-md p-2.5 text-sm cursor-pointer transition ${compSel[x.id] ? "border-teal bg-teal-light/30" : "border-line hover:border-teal/40"}`}>
+                <input type="checkbox" className="accent-teal mt-0.5" checked={!!compSel[x.id]}
+                  onChange={(e) => setCompSel((m) => ({ ...m, [x.id]: e.target.checked }))} />
+                <span className="min-w-0">
+                  <span className="text-navy font-medium line-clamp-1">{x.title}</span>
+                  {program && (
+                    <span className="t-tag bg-emerald-100 text-emerald-700 mt-1 inline-block">
+                      🎁 {program.type === "credit" ? `$${program.creditUsd} credit` : `${program.couponPct}% coupon`} for approved projects
+                    </span>
+                  )}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 mt-3">
+          <input className="t-input flex-1" placeholder="Other part (e.g. OBD-II breakout cable)" value={extName}
+            onChange={(e) => setExtName(e.target.value)} />
+          <button className="t-btn-ghost" disabled={!extName.trim()}
+            onClick={() => { setExternals((a) => [...a, { name: extName.trim(), qty: 1 }]); setExtName(""); }}>
+            + Add
+          </button>
+        </div>
+        {externals.length > 0 && (
+          <div className="flex gap-1.5 mt-2 flex-wrap">
+            {externals.map((e, i) => (
+              <span key={i} className="t-tag bg-panel text-slate">
+                {e.name}
+                <button className="ml-1 text-muted hover:text-cta" onClick={() => setExternals((a) => a.filter((_, j) => j !== i))}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="t-card p-5">

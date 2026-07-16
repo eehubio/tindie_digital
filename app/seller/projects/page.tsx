@@ -15,7 +15,7 @@ import { declineStats, escrowTotal, ChallengeRule } from "@/lib/projects";
  * to the seller before they hit it.
  */
 export default function SellerProjectsPage() {
-  const { projects, challenges, reviewEntry, showToast } = useApp();
+  const { projects, challenges, reviewEntry, showToast, rewardPrograms, rewardGrants, decideGrant, upsertRewardProgram } = useApp();
   const products = useApp((st) => st.allProducts)().filter((p) => p.sellerName === "SuLab");
   const myProjects = projects.filter((p) => p.authorName === "SuLab");
 
@@ -186,6 +186,83 @@ export default function SellerProjectsPage() {
           </div>
         );
       })}
+
+      {/* -------- Reward programs + claims queue -------- */}
+      <div>
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          <h2 className="font-bold text-navy">Project rewards</h2>
+          <span className="text-xs text-muted">
+            Pay for what a Hackster feature gives you — public proof your product works — at a price you set, from a budget you cap.
+          </span>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3 mb-4">
+          {rewardPrograms.map((rp) => (
+            <div key={rp.id} className="t-card p-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-navy text-sm line-clamp-1 flex-1">{rp.productTitle}</span>
+                <span className={`t-tag ${rp.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-panel text-slate"}`}>
+                  {rp.status}
+                </span>
+              </div>
+              <div className="text-sm text-slate mt-1">
+                🎁 {rp.type === "credit" ? `$${rp.creditUsd} Tindie credit` : `${rp.couponPct}% coupon`} per approved project
+              </div>
+              <div className="mt-2">
+                <div className="flex justify-between text-xs text-muted">
+                  <span>Budget</span>
+                  <span>${rp.spentUsd} / ${rp.budgetUsd}</span>
+                </div>
+                <div className="h-1.5 bg-panel rounded-full mt-1 overflow-hidden">
+                  <div className="h-full bg-teal" style={{ width: `${Math.min(100, (rp.spentUsd / rp.budgetUsd) * 100)}%` }} />
+                </div>
+                <p className="t-hint mt-1">Auto-pauses at the cap — never an unbounded liability.</p>
+              </div>
+              <button
+                className="t-btn-ghost !text-xs mt-2"
+                onClick={() => upsertRewardProgram({ ...rp, status: rp.status === "active" ? "paused" : "active" })}
+              >
+                {rp.status === "active" ? "Pause" : "Resume"}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {rewardGrants.filter((g) => g.status === "pending").length === 0 ? (
+          <div className="t-card p-4 text-center text-muted text-sm">No reward claims awaiting review.</div>
+        ) : (
+          <div className="space-y-2">
+            {rewardGrants.filter((g) => g.status === "pending").map((g) => {
+              const pj = projects.find((x) => x.id === g.projectId);
+              const rp = rewardPrograms.find((x) => x.id === g.programId);
+              return (
+                <div key={g.id} className="t-card p-4 flex items-center gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-navy text-sm">{g.buyerName} · claims {g.type === "credit" ? `$${g.valueUsd} credit` : `${g.couponPct}% coupon`}</div>
+                    <div className="text-xs text-muted">
+                      {pj ? <Link href={`/projects/${pj.slug}`} className="text-link hover:underline">{pj.title}</Link> : "project missing"}
+                      {rp && <> · on {rp.productTitle}</>}
+                    </div>
+                    <div className="text-xs text-muted mt-0.5">Purchase verified ✓ · quality bar passed ✓ (machine-checked before this claim was created)</div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button className="t-btn-primary !text-xs" onClick={() => decideGrant(g.id, true)}>✓ Approve</button>
+                    <button
+                      className="t-btn-ghost !text-xs"
+                      onClick={() => {
+                        const r = prompt("Denial reason (the buyer reads this verbatim):");
+                        if (r?.trim()) decideGrant(g.id, false, r.trim());
+                      }}
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* -------- My projects -------- */}
       <div>

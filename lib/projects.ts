@@ -35,6 +35,25 @@ export interface ProjectSection {
   body: string;
 }
 
+/** Hackster's "Things used in this project" — the commerce link. Every entry
+ *  with a productId points at a Tindie listing; the rest are external parts.
+ *  This is the flywheel interface: project → components → listings → sales. */
+export interface ProjectComponent {
+  name: string;
+  qty: number;
+  productId?: string; // Tindie listing when it exists
+  note?: string;
+}
+
+/** Hackaday's project logs — chronological build updates. A project with logs
+ *  is alive; "last updated 2 months ago" is a trust signal hackaday buyers
+ *  actually read. */
+export interface ProjectLog {
+  date: string;
+  title: string;
+  body: string;
+}
+
 export interface OpenProject {
   id: string;
   slug: string;
@@ -47,6 +66,10 @@ export interface OpenProject {
   challengeId?: string;
   summary: string;
   sections: ProjectSection[];
+  components: ProjectComponent[];
+  logs: ProjectLog[];
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  hoursSpent?: number;
   tags: string[];
   githubUrl?: string;
   youtubeUrl?: string;
@@ -136,6 +159,24 @@ export const seedProjects: OpenProject[] = [
         body: "Spin 1: the USB-C CC resistors were drawn as pull-ups, so active cables identified the board as a DFP and it never enumerated. Spin 2: the crystal sat too close to the PIO sampling clock trace — 0.3% sampling jitter at 100 MS/s. Spin 3 passed. The failed Gerbers stay in the repo: anyone buying this board should know which holes it already fell into.",
       },
     ],
+    components: [
+      { name: "RP2350 Pocket Instrument — assembled", qty: 1, productId: "dp_pocket_assembled" },
+      { name: "USB-C PD charger, 30 W+ (any brand)", qty: 1, note: "PPS support recommended" },
+    ],
+    logs: [
+      {
+        date: "2026-06-18",
+        title: "v1.0 boards back from fab — third spin passes",
+        body: "All 12 functional-test points green on 5/5 units. The crystal move (8 mm away from the PIO clock trace) killed the sampling jitter completely: 0.02% at 100 MS/s, down from 0.3%.",
+      },
+      {
+        date: "2026-07-10",
+        title: "Firmware 1.2: calibration persists across power cycles",
+        body: "AFE offset calibration now stores to flash with a CRC. Also published the failed spin-1 and spin-2 Gerbers to /hw/failed-spins — several buyers asked to see them after reading the walkthrough.",
+      },
+    ],
+    difficulty: "advanced",
+    hoursSpent: 120,
     tags: ["RP2350", "test-instruments", "4-layer", "KiCad 8"],
     githubUrl: "https://github.com/sulab/pocket-instrument",
     youtubeUrl: "https://youtube.com/watch?v=demo_pocket_intro",
@@ -165,6 +206,20 @@ export const seedProjects: OpenProject[] = [
         body: "The first decoder version reliably broke on long frames. Two evenings of debugging later: I hadn't handled CAN's 5-bit stuffing rule. Exactly the kind of protocol detail these challenges exist for — one line in the datasheet, one full evening to implement.",
       },
     ],
+    components: [
+      { name: "Pocket Logic Analyzer — Batch 2", qty: 1, productId: "dp_logic_preorder" },
+      { name: "OBD-II breakout cable", qty: 1, note: "any generic one" },
+      { name: "120 Ω termination resistor", qty: 2 },
+    ],
+    logs: [
+      {
+        date: "2026-07-09",
+        title: "Bit stuffing finally handled — long frames decode clean",
+        body: "Rewrote the deframer as a state machine that strips stuff bits before CRC. 10k frames from the OBD port, zero CRC failures.",
+      },
+    ],
+    difficulty: "intermediate",
+    hoursSpent: 30,
     tags: ["CAN", "logic-analyzer", "Python", "challenge-entry"],
     githubUrl: "https://github.com/elena-hw/pla-can-decoder",
     youtubeUrl: "https://youtube.com/watch?v=demo_can_decoder",
@@ -189,6 +244,14 @@ export const seedProjects: OpenProject[] = [
         body: "SAC305 paste, hot air at 320°C / 40% airflow, 90 s preheat. The trick: tack two diagonal corners before reflowing the whole package — the official docs skip this step, but it took my success rate from 50% to 100% (sample size 2, honestly declared).",
       },
     ],
+    components: [
+      { name: "Pocket Instrument kit + source bundle", qty: 1, productId: "dp_pocket_bundle" },
+      { name: "SAC305 solder paste", qty: 1 },
+      { name: "Hot-air station", qty: 1, note: "320°C / 40% airflow" },
+    ],
+    logs: [],
+    difficulty: "beginner",
+    hoursSpent: 2,
     tags: ["build-log", "QFN", "hot-air-rework"],
     githubUrl: "",
     youtubeUrl: "https://youtube.com/watch?v=demo_buildlog",
