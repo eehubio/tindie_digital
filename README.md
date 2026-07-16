@@ -386,3 +386,14 @@ Reordered to **Upload → Analyze → Fix BOM → Verify → Preview & scope →
 - **Sponsors** — DigiKey-style sponsors fund seats or perks in exchange for branding on the challenge and every entry page. Sponsored seats still refund to the **buyer**: sponsorship buys visibility, never influence over decisions — same discipline as §5.4 of the spec.
 - Seller console at `/seller/projects`: publish walkthroughs, launch challenges (seats/deposit/task/rules/deadline), review submitted entries (approve → refund; reject requires a reason the buyer reads verbatim).
 - **Surfacing** — projects are NOT hidden behind the nav item: the marketplace home page carries a Community section (active-challenge banner + latest projects), every `ProductCard` in browse/search shows an "N 个开源项目" badge, and `/search` returns matching open projects below the product results. The project is marketing for the listing; hiding it from browse wastes it.
+
+
+## 8. Batch packing slips (a real seller request)
+
+From a Tindie user, verbatim: printing packslips was "a one-by-one process of opening the order page, clicking the print button, confirming, closing, opening the next order page…" — they asked for **one button on the orders list that generates a single document with all packslips for all unshipped orders, so one print job covers everything**.
+
+Built exactly that: `/seller/orders-action` carries a **"Print all packing slips (N)"** button at queue level → `/seller/packslips` renders one slip per unshipped order (awaiting-shipment + label-bought-not-marked), one per printed page (`break-after-page`), app chrome hidden via `print:hidden`, single `window.print()`. Slips carry ship-to address, order ref, SKU/qty, weight, service & tracking when a label exists, and a picked/packed/shipped checklist row. Batch operations belong on the queue page, not inside each order.
+
+## 9. Batch label buying
+
+The sibling of batch packslips: checkboxes on the Awaiting-shipment queue (+ select-all) → **"Buy labels for selected (N) — one payment"** → `/seller/labels-batch` rate-shops each order at **its own weight and destination**, defaults every row to the cheapest eligible service with a per-row upgrade select (a batch must never take away a choice the single flow offered; untracked services carry a "where is my order" warning) → one charge for the whole batch (`idempotency_key = batch id` — a retry storm must never buy a label twice) → every order moves to **label_purchased**, tracking numbers generated. Buying a label does NOT mark anything shipped: state 2 semantics hold, each parcel is marked as it physically leaves. The success screen offers "Print all packing slips" — slips printed after the batch include service + tracking per parcel.

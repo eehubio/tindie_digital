@@ -72,7 +72,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top brand bar — mirrors Tindie's dark header */}
-      <header className="bg-navy text-white">
+      <header className="bg-navy text-white print:hidden">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
           <Link href={ROLE_HOME[role].href} className="flex items-center gap-2 font-bold text-lg">
             <span className="text-teal">tindie</span>
@@ -113,7 +113,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Role switcher — the demo control */}
-      <div className="bg-teal-light border-b border-teal/20">
+      <div className="bg-teal-light border-b border-teal/20 print:hidden">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 text-sm">
           <span className="text-teal-dark font-semibold">View as:</span>
           <div className="flex rounded-md overflow-hidden border border-teal/30">
@@ -137,7 +137,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">{children}</main>
 
-      <footer className="border-t border-line py-6 text-center text-xs text-muted">
+      <footer className="border-t border-line py-6 text-center text-xs text-muted print:hidden">
         Tindie Design &amp; Manufacturing Marketplace — extension-layer prototype. Built to sit alongside the existing
         Django platform via OAuth / signed JWT.
       </footer>

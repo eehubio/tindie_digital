@@ -19,9 +19,14 @@ export default function OrdersActionPage() {
   const { fulfillments, updateFulfillment, showToast } = useApp();
   const [trackingDraft, setTrackingDraft] = useState<Record<string, string>>({});
   const [justShipped, setJustShipped] = useState<string | null>(null);
+  // Batch label selection — checkboxes live on the queue, the buy happens once.
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const unfulfilled = fulfillments.filter((f) => f.status === "unfulfilled");
   const labelBought = fulfillments.filter((f) => f.status === "label_purchased");
+  const unshippedCount = unfulfilled.length + labelBought.length;
+  const selectedIds = unfulfilled.filter((f) => selected[f.id]).map((f) => f.id);
+  const allSelected = unfulfilled.length > 0 && selectedIds.length === unfulfilled.length;
   const done = fulfillments.filter((f) => f.status === "shipped" || f.status === "delivered");
 
   const overdueDays = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -35,16 +40,50 @@ export default function OrdersActionPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-navy">Orders to handle</h1>
-        <p className="text-sm text-muted mt-1">
-          Everything here needs an action from you. Buy the label from <Link href="/seller/fulfillment" className="text-link hover:underline">Fulfillment</Link> (rate-shopped), or paste your own tracking for manual lanes like China Post / Yanwen.
-        </p>
+      <div className="flex items-start gap-3 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold text-navy">Orders to handle</h1>
+          <p className="text-sm text-muted mt-1">
+            Everything here needs an action from you. Buy the label from <Link href="/seller/fulfillment" className="text-link hover:underline">Fulfillment</Link> (rate-shopped), or paste your own tracking for manual lanes like China Post / Yanwen.
+          </p>
+        </div>
+        {/* Batch ops live at queue level — a seller request, verbatim: "generate a
+            single document containing all packslips for all unshipped orders, so
+            you can just send one single print job." One click, one document. */}
+        <Link
+          href="/seller/packslips"
+          className={`t-btn-primary shrink-0 ${unshippedCount === 0 ? "pointer-events-none opacity-40" : ""}`}
+        >
+          🖨 Print all packing slips ({unshippedCount})
+        </Link>
       </div>
 
       {/* -------- 1. Awaiting shipment -------- */}
       <section>
-        <h2 className="font-bold text-navy mb-2">Awaiting shipment ({unfulfilled.length})</h2>
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
+          <h2 className="font-bold text-navy">Awaiting shipment ({unfulfilled.length})</h2>
+          {unfulfilled.length > 0 && (
+            <>
+              <label className="flex items-center gap-1.5 text-xs text-slate cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="accent-teal"
+                  checked={allSelected}
+                  onChange={(e) =>
+                    setSelected(e.target.checked ? Object.fromEntries(unfulfilled.map((f) => [f.id, true])) : {})
+                  }
+                />
+                Select all
+              </label>
+              <Link
+                href={`/seller/labels-batch?ids=${selectedIds.join(",")}`}
+                className={`t-btn-primary !py-1.5 !text-xs ml-auto ${selectedIds.length === 0 ? "pointer-events-none opacity-40" : ""}`}
+              >
+                🏷 Buy labels for selected ({selectedIds.length}) — one payment
+              </Link>
+            </>
+          )}
+        </div>
         {unfulfilled.length === 0 ? (
           <div className="t-card p-6 text-center text-muted text-sm">Nothing waiting. 🎉</div>
         ) : (
@@ -55,6 +94,12 @@ export default function OrdersActionPage() {
               return (
                 <div key={f.id} className={`t-card p-4 ${overdue ? "border-cta/50" : ""}`}>
                   <div className="flex items-start gap-3 flex-wrap">
+                    <input
+                      type="checkbox"
+                      className="accent-teal mt-1.5 shrink-0"
+                      checked={!!selected[f.id]}
+                      onChange={(e) => setSelected((m) => ({ ...m, [f.id]: e.target.checked }))}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs text-muted">{f.orderRef}</span>

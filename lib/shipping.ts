@@ -145,6 +145,29 @@ export function cheapestQuote(dest: string, profile: ShipProfile) {
   return priced.sort((a, b) => a.cost - b.cost)[0];
 }
 
+
+// ---------------------------------------------------------------------------
+// Batch label buying — quotes for a SPECIFIC order (its real weight), not the
+// profile default. Returns all eligible methods, cheapest first, so the batch
+// UI can default to cheapest and still allow a per-row upgrade to a tracked or
+// faster service.
+// ---------------------------------------------------------------------------
+export function quoteMethodsForOrder(dest: string, weightG: number) {
+  const d = DEST_COUNTRIES[dest];
+  if (!d) return [];
+  const zone = SHIP_ZONES[d.zone];
+  return zone.methods
+    .map((m) => ({ method: m, cost: r2(m.base + m.perG * weightG) }))
+    .sort((a, b) => a.cost - b.cost);
+}
+
+/** Map a ship-method id to the carrier record used for tracking prefixes. */
+export const METHOD_TO_CARRIER: Record<string, string> = {
+  usps_first: "usps",
+  usps_pri: "usps",
+  dhl: "dhl_express",
+};
+
 export interface CustomsHint {
   tone: "ok" | "warn" | "block";
   text: string;
@@ -204,9 +227,13 @@ export interface Fulfillment {
   orderRef: string;
   productTitle: string;
   buyerName: string;
+  /** Full shipping address lines — what a packing slip prints. */
+  address?: string[];
   destination: string; // DEST_COUNTRIES key
   weightG: number;
   goodsValue: number;
+  qty?: number;
+  sku?: string;
   status: FulfillStatus;
   carrierId?: string;
   service?: string;

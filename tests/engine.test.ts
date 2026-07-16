@@ -141,3 +141,30 @@ describe("entitlements — the gate actually refuses", () => {
     expect(checkManufacturingRights(e, 1, true).allowed).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Batch label buying — quoteMethodsForOrder
+// ---------------------------------------------------------------------------
+import { quoteMethodsForOrder, METHOD_TO_CARRIER } from "../lib/shipping";
+
+describe("batch label quotes", () => {
+  it("returns methods cheapest-first, priced at the ORDER's weight (not a profile default)", () => {
+    const light = quoteMethodsForOrder("DE", 42);
+    const heavy = quoteMethodsForOrder("DE", 620);
+    expect(light.length).toBeGreaterThan(0);
+    // cheapest-first ordering
+    for (let i = 1; i < light.length; i++) expect(light[i].cost).toBeGreaterThanOrEqual(light[i - 1].cost);
+    // same method costs more for the heavier order — weight is per-order, not shared
+    const m = light[0].method.id;
+    const heavySame = heavy.find((x) => x.method.id === m)!;
+    expect(heavySame.cost).toBeGreaterThan(light[0].cost);
+  });
+
+  it("maps every zone method id to a carrier for tracking-number generation", () => {
+    for (const dest of ["US", "DE", "JP"]) {
+      for (const q of quoteMethodsForOrder(dest, 100)) {
+        expect(METHOD_TO_CARRIER[q.method.id]).toBeTruthy();
+      }
+    }
+  });
+});
