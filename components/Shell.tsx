@@ -40,7 +40,6 @@ const ROLE_HOME: Record<Role, { href: string; nav: { href: string; label: string
     nav: [
       { href: "/admin", label: "Overview" },
       { href: "/admin/review", label: "Review" },
-      { href: "/admin/projects", label: "Projects" },
       { href: "/admin/config", label: "Configuration" },
     ],
   },

@@ -5,18 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SellersPage from "@/components/admin/Sellers";
 import ReviewsPage from "@/components/admin/Reviews";
 import DisputesPage from "@/components/admin/Disputes";
+import ProjectsPage from "@/components/admin/Projects";
 
 /**
  * Admin Review hub — Sellers, Product Review and Disputes merged. These are
  * the three queues where an admin JUDGES: applications in, products in,
  * disputes in; a decision with a reason out. One page, one work rhythm.
- * (Project moderation stays its own item — it's report-driven, not a daily
- * queue, and mixing its "sentiment is not a category" posture into approval
- * queues invites the wrong habits.)
+ * Project Review sits here too — it is the one
+ * tab with the OPPOSITE posture (post-publication, flags only), which is why
+ * it carries an explicit posture banner instead of relying on memory.
  */
 const TABS = [
   { key: "sellers", label: "Sellers", hint: "applications" },
   { key: "products", label: "Product Review", hint: "IP gate" },
+  { key: "projects", label: "Project Review", hint: "flags only" },
   { key: "disputes", label: "Disputes", hint: "order issues" },
 ] as const;
 
@@ -41,6 +43,21 @@ function ReviewInner() {
       </div>
       {tab === "sellers" && <SellersPage />}
       {tab === "products" && <ReviewsPage />}
+      {tab === "projects" && (
+        <div>
+          {/* Posture guard: the other tabs in this hub are PRE-approval
+              queues (nothing goes live without a yes). This one is the
+              opposite — content is live by default, and this tab only rules
+              on flags. Sitting next to approval queues, that difference is
+              easy to forget, so it's stated where the admin's eyes are. */}
+          <div className="t-card p-3 mb-5 border-amber-300 bg-amber-50/60 text-sm text-slate">
+            ⚖ <strong className="text-navy">Different posture than the tabs beside it:</strong> projects are already
+            published — nothing here awaits approval. This queue rules on flags only (provable falsehoods, IP, spam,
+            dangerous misinformation). &ldquo;Unfavorable to the seller&rdquo; is not a category it recognizes.
+          </div>
+          <ProjectsPage />
+        </div>
+      )}
       {tab === "disputes" && <DisputesPage />}
     </div>
   );
