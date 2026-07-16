@@ -11,6 +11,16 @@ export default function ProjectDetailPage() {
   const p = projects.find((x) => x.slug === slug);
 
   if (!p) return <div className="t-card p-10 text-center text-muted">Project not found.</div>;
+  if (p.publication === "removed")
+    return (
+      <div className="t-card p-10 text-center space-y-2 max-w-2xl mx-auto">
+        <div className="text-2xl">🛑</div>
+        <div className="font-bold text-navy">This project was unpublished by a platform ruling.</div>
+        <p className="text-sm text-muted">
+          {p.flag?.resolution ?? "Policy violation."} Removal happens only through platform review — never at a seller&apos;s request alone.
+        </p>
+      </div>
+    );
 
   const prod = products.find((x) => x.id === p.productId);
   const ch = challenges.find((c) => c.id === p.challengeId);
@@ -29,6 +39,13 @@ export default function ProjectDetailPage() {
             by <strong className={p.authorRole === "seller" ? "text-teal-dark" : "text-navy"}>{p.authorName}</strong>
             ({p.authorRole === "seller" ? "seller" : "buyer"}) · updated {p.updatedAt}
           </span>
+          {p.verifiedPurchase ? (
+            <span className="t-tag bg-emerald-100 text-emerald-700">✓ Verified purchase</span>
+          ) : (
+            <span className="t-tag bg-panel text-muted" title="The author did not hold a purchase of the linked product at publish time. Unverified projects are never reward-eligible.">
+              Unverified
+            </span>
+          )}
           <button className="ml-auto t-btn-ghost" onClick={() => likeProject(p.id)}>♥ {p.likes}</button>
         </div>
         <h1 className="text-2xl font-bold text-navy mt-2">{p.title}</h1>
@@ -111,6 +128,27 @@ export default function ProjectDetailPage() {
           </div>
         ))}
       </div>
+
+      {p.sellerResponse && (
+        <div className="t-card p-5 border-teal/40 bg-teal-light/20">
+          <div className="flex items-center gap-2">
+            <span className="t-tag bg-teal text-white">Official seller response</span>
+            <span className="text-xs text-muted">{p.sellerResponse.date}</span>
+          </div>
+          <p className="text-sm text-slate mt-2 leading-relaxed">{p.sellerResponse.text}</p>
+          <p className="t-hint mt-2">
+            Sellers get a right of reply — never a right of removal. A good response to a critical project sells more
+            than a five-star build log.
+          </p>
+        </div>
+      )}
+
+      {p.flag && p.flag.status === "open" && (
+        <div className="t-card p-3 border-amber-300 bg-amber-50/50 text-xs text-slate">
+          ⚖ A factual-dispute flag on this project is under platform review. The project stays visible while the
+          review runs; the burden of proof sits with the flagger.
+        </div>
+      )}
 
       {p.logs.length > 0 && (
         <div className="t-card p-5">

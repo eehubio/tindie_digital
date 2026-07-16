@@ -196,7 +196,7 @@ export default function ChallengeDetailPage() {
         </div>
         {c.entries.some((e) => e.status === "rejected") && (
           <p className="t-hint mt-2">
-            Rejected entries see the exact reason and can fix and resubmit before the deadline — a rejection is a change request, not a final verdict.
+            Rejected entries see the exact reason and can fix and resubmit before the deadline — a rejection is a change request, not a final verdict. And a rejection touches only the refund: <strong className="text-navy">the project itself stays published</strong>. The seller judges the deposit, never the speech.
           </p>
         )}
       </div>

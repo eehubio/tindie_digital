@@ -99,6 +99,12 @@ interface AppState {
   walletCredit: number;
   upsertRewardProgram: (p: RewardProgram) => void;
   decideGrant: (id: string, approve: boolean, reason?: string) => void;
+
+  /** Governance: reply ≠ removal. Sellers respond publicly; flags go to the
+   *  platform; only a platform ruling can unpublish. */
+  respondToProject: (id: string, text: string) => void;
+  flagProject: (id: string, by: string, reason: string) => void;
+  resolveProjectFlag: (id: string, uphold: boolean, resolution: string) => void;
   submitEntry: (challengeId: string, entryId: string, projectId: string) => void;
   reviewEntry: (challengeId: string, entryId: string, approve: boolean, reason?: string) => void;
 
@@ -332,6 +338,37 @@ export const useApp = create<AppState>()(
     }),
   likeProject: (id) =>
     set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p)) })),
+  respondToProject: (id, text) =>
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === id ? { ...p, sellerResponse: { text, date: new Date().toISOString().slice(0, 10) } } : p
+      ),
+      toast: "Official response posted on the project page",
+    })),
+  flagProject: (id, by, reason) =>
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === id && !p.flag
+          ? { ...p, flag: { by, reason, at: new Date().toISOString().slice(0, 10), status: "open" as const } }
+          : p
+      ),
+      toast: "Escalated to platform review — grounds must be provable falsehoods or policy violations, not sentiment",
+    })),
+  resolveProjectFlag: (id, uphold, resolution) =>
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === id && p.flag
+          ? {
+              ...p,
+              flag: { ...p.flag, status: (uphold ? "upheld" : "dismissed") as "upheld" | "dismissed", resolution },
+              publication: (uphold ? "removed" : p.publication) as "published" | "removed",
+            }
+          : p
+      ),
+      toast: uphold
+        ? "Flag upheld — project unpublished, ruling recorded"
+        : "Flag dismissed — project stays up, ruling recorded on the flag",
+    })),
 
   rewardPrograms: seedRewardPrograms,
   rewardGrants: seedRewardGrants,
@@ -501,7 +538,7 @@ export const useApp = create<AppState>()(
       //   - User-created rows → keep, but NORMALIZE missing fields.
       //   - Unknown/missing collections → fall back to seeds via merge below.
       // -------------------------------------------------------------------
-      version: 3,
+      version: 4,
       migrate: (persisted: unknown, fromVersion: number) => {
         const st = (persisted ?? {}) as Record<string, unknown>;
         if (fromVersion < 2) {
@@ -522,6 +559,20 @@ export const useApp = create<AppState>()(
           st.rewardPrograms = seedRewardPrograms;
           st.rewardGrants = seedRewardGrants;
           if (typeof st.walletCredit !== "number") st.walletCredit = 5;
+        }
+        if (fromVersion < 4) {
+          // Governance fields (publication / verifiedPurchase) — default old
+          // rows to published; verified only if a matching entitlement exists.
+          const projs = Array.isArray(st.projects) ? (st.projects as OpenProject[]) : [];
+          const ents = Array.isArray(st.entitlements) ? (st.entitlements as Entitlement[]) : [];
+          st.projects = projs.map((x) => ({
+            ...x,
+            publication: x.publication ?? "published",
+            verifiedPurchase:
+              x.verifiedPurchase ??
+              (x.authorRole === "seller" ||
+                (x.components ?? []).some((c) => c.productId && ents.some((e) => e.productId === c.productId))),
+          }));
         }
         if (fromVersion < 3) {
           // New seed entitlements (e.g. the pocket bundle) must reach clients

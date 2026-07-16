@@ -77,6 +77,29 @@ export interface OpenProject {
   likes: number;
   createdAt: string;
   updatedAt: string;
+
+  // ---- Governance ------------------------------------------------------
+  /** Publication is NEVER seller-gated. "removed" only via platform ruling
+   *  (illegal / IP / spam / dangerous misinformation) — sentiment is not a
+   *  moderation criterion. */
+  publication: "published" | "removed";
+  /** Author held an entitlement/order for the linked product at publish time.
+   *  The anti-hit-piece signal: unverified projects can exist, but carry the
+   *  missing badge and are never reward-eligible. */
+  verifiedPurchase: boolean;
+  /** The seller's right of REPLY — not a right of removal. Rendered as an
+   *  official block on the project page, like a review response. */
+  sellerResponse?: { text: string; date: string };
+  /** Factual-dispute flag: seller (or anyone) escalates to platform review.
+   *  Grounds are provable falsehoods or policy violations, not "unfavorable".
+   *  Burden of proof sits with the flagger. */
+  flag?: {
+    by: string;
+    reason: string;
+    at: string;
+    status: "open" | "dismissed" | "upheld";
+    resolution?: string;
+  };
 }
 
 export type EntryStatus =
@@ -182,6 +205,8 @@ export const seedProjects: OpenProject[] = [
     youtubeUrl: "https://youtube.com/watch?v=demo_pocket_intro",
     coverGradient: "from-teal-600 to-emerald-800",
     likes: 214,
+    publication: "published",
+    verifiedPurchase: true,
     createdAt: "2026-06-18",
     updatedAt: "2026-07-10",
   },
@@ -225,6 +250,8 @@ export const seedProjects: OpenProject[] = [
     youtubeUrl: "https://youtube.com/watch?v=demo_can_decoder",
     coverGradient: "from-amber-500 to-orange-800",
     likes: 87,
+    publication: "published",
+    verifiedPurchase: true,
     createdAt: "2026-07-09",
     updatedAt: "2026-07-12",
   },
@@ -257,8 +284,48 @@ export const seedProjects: OpenProject[] = [
     youtubeUrl: "https://youtube.com/watch?v=demo_buildlog",
     coverGradient: "from-indigo-600 to-violet-900",
     likes: 41,
+    publication: "published",
+    verifiedPurchase: true,
     createdAt: "2026-07-11",
     updatedAt: "2026-07-11",
+  },
+  {
+    id: "pj_thermal_critique",
+    slug: "pocket-instrument-usb-thermal-issue",
+    title: "Pocket Instrument teardown: the USB-C thermal issue nobody mentions",
+    authorName: "probe_master",
+    authorRole: "buyer",
+    kind: "build_log",
+    productId: "dp_pocket_assembled",
+    summary:
+      "I like this instrument — but after 40 minutes of continuous 100 MS/s capture, the USB-C PD input stage hits 71°C and the unit throttles sampling. Thermal camera shots, measurements, and a workaround inside. Posting this so the next buyer knows what to expect.",
+    sections: [
+      {
+        heading: "The measurement",
+        body: "Ambient 24°C, continuous capture at 100 MS/s, USB-C PD at 9V. The buck converter area reaches 71°C at the 40-minute mark (thermal cam frames in the repo). Firmware then drops the sample rate to 50 MS/s — undocumented behavior; I initially thought my unit was faulty.",
+      },
+      {
+        heading: "Workaround that works",
+        body: "Feeding 5V instead of 9V keeps the converter at 54°C with no throttling — the efficiency curve clearly favors the lower input at this load. A firmware toggle to prefer 5V negotiation would fix this in software.",
+      },
+    ],
+    components: [{ name: "RP2350 Pocket Instrument — assembled", qty: 1, productId: "dp_pocket_assembled" }],
+    logs: [],
+    difficulty: "intermediate",
+    hoursSpent: 6,
+    tags: ["teardown", "thermal", "USB-PD"],
+    githubUrl: "https://github.com/probe-master/pocket-thermal-notes",
+    youtubeUrl: "",
+    coverGradient: "from-rose-600 to-slate-800",
+    likes: 156,
+    publication: "published",
+    verifiedPurchase: true,
+    sellerResponse: {
+      text: "This is accurate and we should have documented it. The 71°C reading matches our own bench data; the throttle at 50 MS/s is a deliberate protection we failed to put in the manual. Firmware 1.3 (in version notes now) adds a 'prefer 5V' option exactly as suggested, and the manual gains a thermal section. Thank you for the thorough write-up — the $5 project reward is yours, obviously.",
+      date: "2026-07-14",
+    },
+    createdAt: "2026-07-13",
+    updatedAt: "2026-07-13",
   },
 ];
 

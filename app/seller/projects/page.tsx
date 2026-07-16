@@ -15,7 +15,7 @@ import { declineStats, escrowTotal, ChallengeRule } from "@/lib/projects";
  * to the seller before they hit it.
  */
 export default function SellerProjectsPage() {
-  const { projects, challenges, reviewEntry, showToast, rewardPrograms, rewardGrants, decideGrant, upsertRewardProgram } = useApp();
+  const { projects, challenges, reviewEntry, showToast, rewardPrograms, rewardGrants, decideGrant, upsertRewardProgram, respondToProject, flagProject } = useApp();
   const products = useApp((st) => st.allProducts)().filter((p) => p.sellerName === "SuLab");
   const myProjects = projects.filter((p) => p.authorName === "SuLab");
   // Community projects ON YOUR LISTINGS — buyers' builds that reference a
@@ -211,16 +211,45 @@ export default function SellerProjectsPage() {
         ) : (
           <div className="grid sm:grid-cols-2 gap-3">
             {communityProjects.map((pj) => (
-              <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card p-4 hover:shadow-card transition block">
+              <div key={pj.id} className="t-card p-4">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="t-tag bg-panel text-slate">
                     {pj.kind === "challenge_entry" ? "Challenge entry" : "Build log"}
                   </span>
+                  {pj.sellerResponse && <span className="t-tag bg-teal-light text-teal-dark">Responded</span>}
+                  {pj.flag && <span className="t-tag bg-amber-100 text-amber-800">Flag: {pj.flag.status}</span>}
+                  {pj.publication === "removed" && <span className="t-tag bg-red-100 text-red-700">Removed</span>}
                   <span className="text-xs text-muted ml-auto">♥ {pj.likes}</span>
                 </div>
-                <div className="font-semibold text-navy mt-1.5 line-clamp-2">{pj.title}</div>
+                <Link href={`/projects/${pj.slug}`} className="font-semibold text-navy mt-1.5 line-clamp-2 block hover:text-teal-dark">
+                  {pj.title}
+                </Link>
                 <div className="text-xs text-muted mt-1">{pj.authorName}</div>
-              </Link>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="t-btn-ghost !text-xs"
+                    onClick={() => {
+                      const t = prompt("Official response (public, on the project page — a reply, not a removal):");
+                      if (t?.trim()) respondToProject(pj.id, t.trim());
+                    }}
+                  >
+                    {pj.sellerResponse ? "Edit response" : "Respond publicly"}
+                  </button>
+                  {!pj.flag && pj.publication === "published" && (
+                    <button
+                      className="t-btn-ghost !text-xs"
+                      onClick={() => {
+                        const r = prompt(
+                          "Escalate to platform review. Grounds: PROVABLE falsehoods or policy violations only — 'unfavorable' is not grounds. State the claim and your evidence:"
+                        );
+                        if (r?.trim()) flagProject(pj.id, "SuLab", r.trim());
+                      }}
+                    >
+                      ⚖ Dispute facts
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         )}

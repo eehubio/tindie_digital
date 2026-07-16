@@ -39,6 +39,7 @@ function NewProjectForm() {
   const [extName, setExtName] = useState("");
   const [externals, setExternals] = useState<ProjectComponent[]>([]);
   const rewardPrograms = useApp((st) => st.rewardPrograms);
+  const entitlements = useApp((st) => st.entitlements);
 
   const prod = products.find((p) => p.id === productId);
   const requiredOk =
@@ -69,6 +70,16 @@ function NewProjectForm() {
       youtubeUrl: youtube.trim() || undefined,
       coverGradient: asSeller ? "from-teal-600 to-emerald-800" : "from-slate-600 to-navy",
       likes: 0,
+      // Publication is immediate — no seller gate, ever. Platform moderation
+      // is post-publication (see /admin/projects). Verified-purchase is
+      // computed, not claimed.
+      publication: "published",
+      verifiedPurchase:
+        asSeller ||
+        components.some(
+          (c) => c.productId && entitlements.some((e) => e.productId === c.productId && e.status === "active")
+        ) ||
+        !!ch, // challenge participants paid a deposit — that IS the purchase
       createdAt: new Date().toISOString().slice(0, 10),
       updatedAt: new Date().toISOString().slice(0, 10),
     });
