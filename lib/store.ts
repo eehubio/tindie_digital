@@ -501,7 +501,7 @@ export const useApp = create<AppState>()(
       //   - User-created rows → keep, but NORMALIZE missing fields.
       //   - Unknown/missing collections → fall back to seeds via merge below.
       // -------------------------------------------------------------------
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, fromVersion: number) => {
         const st = (persisted ?? {}) as Record<string, unknown>;
         if (fromVersion < 2) {
@@ -522,6 +522,13 @@ export const useApp = create<AppState>()(
           st.rewardPrograms = seedRewardPrograms;
           st.rewardGrants = seedRewardGrants;
           if (typeof st.walletCredit !== "number") st.walletCredit = 5;
+        }
+        if (fromVersion < 3) {
+          // New seed entitlements (e.g. the pocket bundle) must reach clients
+          // whose persisted library predates them — merge missing by id.
+          const old = Array.isArray(st.entitlements) ? (st.entitlements as Entitlement[]) : [];
+          const have = new Set(old.map((e) => e?.id));
+          st.entitlements = [...seedEntitlements.filter((e) => !have.has(e.id)), ...old];
         }
         return st;
       },

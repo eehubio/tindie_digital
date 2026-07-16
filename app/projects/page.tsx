@@ -12,7 +12,7 @@ const KIND_LABEL: Record<string, { label: string; cls: string }> = {
 };
 
 export default function ProjectsPage() {
-  const { projects, challenges } = useApp();
+  const { projects, challenges, role } = useApp();
   const products = useApp((st) => st.allProducts)();
   const [filter, setFilter] = useState<string>("all");
 
@@ -20,13 +20,23 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex items-start gap-3 flex-wrap">
+        <div className="flex-1 min-w-0">
         <h1 className="text-xl font-bold text-navy">Projects</h1>
         <p className="text-sm text-muted mt-1 max-w-3xl">
           Sellers lay their design process open — architecture trade-offs, failed board spins, firmware notes. That builds
           more credibility than any marketing copy. Buyers publish build logs and challenge entries on hardware they
           bought. Every project links back to a listing; the content sells the next unit.
         </p>
+        </div>
+        {role === "seller" && (
+          <Link href="/seller/projects" className="t-btn-primary shrink-0">
+            Seller console: challenges & rewards →
+          </Link>
+        )}
+        {role === "buyer" && (
+          <Link href="/projects/new" className="t-btn-cta shrink-0">+ Publish a project</Link>
+        )}
       </div>
 
       {/* -------- Active challenges banner -------- */}

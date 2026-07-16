@@ -588,6 +588,29 @@ export const seedIpComplaints: IpComplaint[] = [
 
 export const seedEntitlements: Entitlement[] = [
   {
+    id: "ent_3002",
+    productId: "dp_pocket_bundle",
+    productTitle: "Pocket Instrument Kit + Design Files (Bundle)",
+    licenseName: "Personal License",
+    grantedAt: "2026-07-08",
+    downloadLimit: 10,
+    downloadCount: 2,
+    status: "active",
+    purchasedVersionId: "av_bundle_100",
+    latestAccessibleVersionId: "av_bundle_100",
+    updatePolicy: "minor_updates",
+    rights: {
+      personalUnits: 5,
+      commercialUnits: 0,
+      partnerManufacturingAllowed: false,
+      sourceFilesIncluded: true,
+    },
+    commercialUnitsUsed: 0,
+    seats: 1,
+    licenseSnapshotHash: "sha256:2b7e…91cc",
+    termsAcceptedAt: "2026-07-08T14:03:11Z",
+  },
+  {
     id: "ent_3001",
     productId: "dp_rp2350",
     productTitle: "RP2350 Multi-function Pocket Instrument",

@@ -106,7 +106,8 @@ describe("partner eligibility — a hard gate", () => {
 });
 
 describe("entitlements — the gate actually refuses", () => {
-  const base = seedEntitlements[0];
+  // By id, not by seed order — new seeds must never break the gate tests.
+  const base = seedEntitlements.find((e) => e.id === "ent_3001")!;
 
   it("refuses at the download limit instead of saturating a counter", () => {
     const maxed = { ...base, downloadCount: base.downloadLimit };

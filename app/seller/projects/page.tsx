@@ -18,6 +18,17 @@ export default function SellerProjectsPage() {
   const { projects, challenges, reviewEntry, showToast, rewardPrograms, rewardGrants, decideGrant, upsertRewardProgram } = useApp();
   const products = useApp((st) => st.allProducts)().filter((p) => p.sellerName === "SuLab");
   const myProjects = projects.filter((p) => p.authorName === "SuLab");
+  // Community projects ON YOUR LISTINGS — buyers' builds that reference a
+  // SuLab product either as the main link or in the components list. This is
+  // the seller-side mirror of the buyer Library section: your catalog, seen
+  // through what the community actually did with it.
+  const myProductIds = new Set(products.map((x) => x.id));
+  const communityProjects = projects.filter(
+    (pj) =>
+      pj.authorRole === "buyer" &&
+      ((pj.productId && myProductIds.has(pj.productId)) ||
+        pj.components.some((c) => c.productId && myProductIds.has(c.productId)))
+  );
 
   const [showLaunch, setShowLaunch] = useState(false);
   const [rejectDrafts, setRejectDrafts] = useState<Record<string, string>>({});
@@ -186,6 +197,34 @@ export default function SellerProjectsPage() {
           </div>
         );
       })}
+
+      {/* -------- Community projects on your listings -------- */}
+      <div>
+        <h2 className="font-bold text-navy mb-1">Community projects on your listings ({communityProjects.length})</h2>
+        <p className="t-hint mb-3">
+          Buyers&apos; builds that reference your products — every one of these is selling the next unit for you.
+        </p>
+        {communityProjects.length === 0 ? (
+          <div className="t-card p-4 text-center text-muted text-sm">
+            None yet — a reward program on a listing is the fastest way to change that.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {communityProjects.map((pj) => (
+              <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card p-4 hover:shadow-card transition block">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="t-tag bg-panel text-slate">
+                    {pj.kind === "challenge_entry" ? "Challenge entry" : "Build log"}
+                  </span>
+                  <span className="text-xs text-muted ml-auto">♥ {pj.likes}</span>
+                </div>
+                <div className="font-semibold text-navy mt-1.5 line-clamp-2">{pj.title}</div>
+                <div className="text-xs text-muted mt-1">{pj.authorName}</div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* -------- Reward programs + claims queue -------- */}
       <div>

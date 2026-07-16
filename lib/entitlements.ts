@@ -17,6 +17,18 @@ import { Entitlement, AssetVersion, DownloadGrant } from "./types";
 
 export const seedAssetVersions: AssetVersion[] = [
   {
+    id: "av_bundle_100",
+    productId: "dp_pocket_bundle",
+    semver: "1.0.0",
+    publishedAt: "2026-06-28",
+    changelog: "Kit sources: schematics, PCB, firmware 1.2, assembly guide.",
+    files: [],
+    bom: [],
+    validation: { drc: "pass", erc: "pass", fabricated: true },
+    certifiedLevel: 2,
+    status: "published",
+  },
+  {
     id: "av_rp2350_100",
     productId: "dp_rp2350",
     semver: "1.0.0",

@@ -7,7 +7,17 @@ import { versionsFor, canAccessVersion } from "@/lib/entitlements";
 import { DownloadGrant } from "@/lib/types";
 
 export default function LibraryPage() {
-  const { entitlements, requestDownload, revokeEntitlement } = useApp();
+  const { entitlements, requestDownload, revokeEntitlement, walletCredit, rewardGrants, projects } = useApp();
+  // Projects related to hardware YOU OWN — the community's builds on your
+  // boards, by product/component match. Your own projects are excluded; this
+  // section is about what OTHERS did with what you bought.
+  const ownedIds = new Set(entitlements.filter((e) => e.status === "active").map((e) => e.productId));
+  const relatedProjects = projects.filter(
+    (pj) =>
+      pj.authorName !== "you (demo)" &&
+      ((pj.productId && ownedIds.has(pj.productId)) ||
+        pj.components.some((c) => c.productId && ownedIds.has(c.productId)))
+  );
   const [lastGrant, setLastGrant] = useState<Record<string, DownloadGrant>>({});
 
   return (
@@ -18,6 +28,24 @@ export default function LibraryPage() {
         refused — limit reached, licence revoked, refund issued, version withdrawn, or a version your update policy does
         not cover. A granted download returns a single-use, short-lived signed URL, never a bucket path.
       </p>
+
+      {/* Tindie credit wallet — funded by approved project rewards. Balance
+          gating is OUR ledger at spend time, not the processor's. */}
+      <div className="t-card p-4 mb-4 flex items-center gap-4 flex-wrap border-emerald-200">
+        <div>
+          <div className="t-label">Tindie credit</div>
+          <div className="text-2xl font-bold text-navy">${walletCredit.toFixed(2)}</div>
+        </div>
+        <div className="text-xs text-muted flex-1 min-w-[200px]">
+          Earned from project rewards — applied automatically at checkout.
+          {rewardGrants.filter((g) => g.status === "pending").length > 0 && (
+            <span className="text-tag font-semibold">
+              {" "}{rewardGrants.filter((g) => g.status === "pending").length} claim(s) pending seller approval.
+            </span>
+          )}
+        </div>
+        <Link href="/projects" className="t-btn-ghost shrink-0">Earn more: publish a project →</Link>
+      </div>
 
       {entitlements.length === 0 ? (
         <div className="t-card p-10 text-center text-muted">
@@ -153,6 +181,30 @@ export default function LibraryPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {relatedProjects.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-bold text-navy mb-1">Projects on hardware you own ({relatedProjects.length})</h2>
+          <p className="t-hint mb-3">
+            What other makers built with the products in your library — walkthroughs, build logs and challenge
+            entries linked to your purchases.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {relatedProjects.map((pj) => (
+              <Link key={pj.id} href={`/projects/${pj.slug}`} className="t-card p-4 hover:shadow-card transition block">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`t-tag ${pj.authorRole === "seller" ? "bg-teal text-white" : "bg-panel text-slate"}`}>
+                    {pj.authorRole === "seller" ? "Seller · walkthrough" : pj.kind === "challenge_entry" ? "Buyer · challenge entry" : "Buyer · build log"}
+                  </span>
+                  <span className="text-xs text-muted ml-auto">♥ {pj.likes}</span>
+                </div>
+                <div className="font-semibold text-navy mt-1.5 line-clamp-2">{pj.title}</div>
+                <div className="text-xs text-muted mt-1">{pj.authorName}</div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>
