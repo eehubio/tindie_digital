@@ -37,6 +37,7 @@ function NewProjectForm() {
     sp.get("product") ? { [sp.get("product")!]: true } : ch?.productId ? { [ch.productId]: true } : {}
   );
   const [extName, setExtName] = useState("");
+  const [showImport, setShowImport] = useState(false);
   const [externals, setExternals] = useState<ProjectComponent[]>([]);
   const rewardPrograms = useApp((st) => st.rewardPrograms);
   const entitlements = useApp((st) => st.entitlements);
@@ -99,6 +100,50 @@ function NewProjectForm() {
             : "Publish a build log or mod project on hardware you bought."}
         </p>
       </div>
+
+      {/* Hackaday.io import — the cold-start on-ramp. Tindie ALREADY has
+          Hackaday OAuth (production login: /hackaday/authenticate/), so this
+          is identity-free friction: pick one of your hackaday projects, we
+          prefill everything, you add the Tindie components list and publish. */}
+      {!ch && !asSeller && (
+        <div className="t-card p-4">
+          <button className="t-btn-ghost w-full" onClick={() => setShowImport((v) => !v)}>
+            ⬇ Import from your hackaday.io projects (uses your existing Hackaday login)
+          </button>
+          {showImport && (
+            <div className="mt-3 space-y-2">
+              {HACKADAY_MOCK.map((h) => (
+                <button
+                  key={h.id}
+                  className="w-full text-left t-card p-3 hover:shadow-card transition flex items-center gap-3"
+                  onClick={() => {
+                    setTitle(h.title);
+                    setSummary(h.summary);
+                    setGithub(h.github);
+                    setYoutube(h.video);
+                    setSections([
+                      { heading: "Details (imported from hackaday.io)", body: h.details },
+                      { heading: "", body: "" },
+                    ]);
+                    setShowImport(false);
+                  }}
+                >
+                  <div className={`w-14 h-10 rounded-md bg-gradient-to-br ${h.gradient} shrink-0`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-navy text-sm line-clamp-1">{h.title}</div>
+                    <div className="text-xs text-muted">hackaday.io · {h.followers} followers · updated {h.updated}</div>
+                  </div>
+                  <span className="ml-auto t-tag bg-panel text-slate shrink-0">Import</span>
+                </button>
+              ))}
+              <p className="t-hint">
+                Imports title, summary, links and the details section. The Tindie-specific part — the components
+                list below — is yours to add: that link is what the reward and the product-page placement hang on.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {ch && (
         <div className="t-card p-4 border-tag/40 bg-orange-50/40 text-sm text-slate">
@@ -225,3 +270,31 @@ export default function NewProjectPage() {
     </Suspense>
   );
 }
+
+
+// Mocked hackaday.io API response — production pulls the user's projects via
+// the already-connected Hackaday OAuth identity + hackaday's public API.
+const HACKADAY_MOCK = [
+  {
+    id: "hd1",
+    title: "PowerPD — USB-C PD/PPS Bench Power Supply",
+    summary: "An ESP32-driven bench supply that negotiates USB-C PD and PPS profiles, with a rotary encoder UI and OLED readout.",
+    details: "Uses an ESP32-S3 and a FUSB302 PHY to negotiate PD contracts up to 20V/5A. PPS mode gives 20mV setpoint resolution — fine enough for battery-charge experiments. Firmware, KiCad sources and enclosure STLs in the repo.",
+    github: "https://github.com/example/powerpd",
+    video: "https://youtube.com/watch?v=demo_powerpd",
+    followers: 412,
+    updated: "2026-06-30",
+    gradient: "from-cyan-600 to-blue-900",
+  },
+  {
+    id: "hd2",
+    title: "ESP32-CAM AI Vision Rover",
+    summary: "Line-following + obstacle-avoidance rover with on-device inference on an ESP32-CAM.",
+    details: "TinyML model quantized to int8 runs at 11 fps on the ESP32-CAM. Differential drive with cheap N20 motors; the tricky part was power isolation between the camera and motor rails — documented in the log.",
+    github: "https://github.com/example/ai-rover",
+    video: "https://youtube.com/watch?v=demo_rover",
+    followers: 188,
+    updated: "2026-05-12",
+    gradient: "from-lime-600 to-emerald-900",
+  },
+];

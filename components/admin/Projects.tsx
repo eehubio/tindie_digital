@@ -17,7 +17,8 @@ import { useApp } from "@/lib/store";
  * keeps the speech the community's, not ours.
  */
 export default function AdminProjectsPage() {
-  const { projects, resolveProjectFlag } = useApp();
+  const { projects, resolveProjectFlag, toggleFeatured } = useApp();
+  const published = projects.filter((p) => p.publication === "published");
   const openFlags = projects.filter((p) => p.flag?.status === "open");
   const ruled = projects.filter((p) => p.flag && p.flag.status !== "open");
 
@@ -81,6 +82,36 @@ export default function AdminProjectsPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section>
+        <h2 className="font-bold text-navy mb-2">Editorial — featured projects</h2>
+        <p className="t-hint mb-3">
+          Featuring is an editorial lever aligned with the Tindarian culture: platform recognition for outstanding
+          work, including critical work. No auto-rule — an entitlement would be farmed.
+        </p>
+        <div className="t-card overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-line">
+              {published.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-4 py-2.5">
+                    <Link href={`/projects/${p.slug}`} className="text-link hover:underline">{p.title}</Link>
+                    <span className="text-xs text-muted ml-2">♥ {p.likes}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      className={`t-tag ${p.featured ? "bg-tag text-white" : "bg-panel text-slate hover:bg-teal-light"}`}
+                      onClick={() => toggleFeatured(p.id)}
+                    >
+                      {p.featured ? "★ Featured" : "☆ Feature"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {ruled.length > 0 && (

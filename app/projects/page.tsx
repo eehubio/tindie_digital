@@ -91,6 +91,7 @@ export default function ProjectsPage() {
               <Link key={p.id} href={`/projects/${p.slug}`} className="t-card overflow-hidden hover:shadow-card transition block">
                 <div className={`h-28 bg-gradient-to-br ${p.coverGradient} relative`}>
                   <span className={`absolute top-2 left-2 t-tag ${KIND_LABEL[p.kind].cls}`}>{KIND_LABEL[p.kind].label}</span>
+                  {p.featured && <span className="absolute bottom-2 left-2 t-tag bg-tag text-white">★ Featured by Tindie</span>}
                   {p.youtubeUrl && <span className="absolute top-2 right-2 t-tag bg-white/90 text-slate">▶ Video</span>}
                 </div>
                 <div className="p-4">

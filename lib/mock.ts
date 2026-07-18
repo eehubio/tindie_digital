@@ -378,6 +378,13 @@ export const products: DigitalProduct[] = [
   // -------------------------------------------------------------------------
   {
     id: "dp_pocket_assembled",
+    volumeTiers: [
+      { minQty: 1, price: 89 },
+      { minQty: 5, price: 84 },
+      { minQty: 10, price: 79 },
+    ],
+    hsCode: "8543.70",
+    originCountry: "US",
     slug: "pocket-instrument-assembled",
     title: "Pocket Instrument — Assembled & Tested Unit",
     productType: "physical",
@@ -416,6 +423,12 @@ export const products: DigitalProduct[] = [
   // -------------------------------------------------------------------------
   {
     id: "dp_pocket_bundle",
+    volumeTiers: [
+      { minQty: 1, price: 129 },
+      { minQty: 3, price: 122 },
+    ],
+    hsCode: "8543.70",
+    originCountry: "US",
     slug: "pocket-instrument-kit-plus-sources",
     title: "Pocket Instrument Kit + Design Files (Bundle)",
     productType: "bundle",

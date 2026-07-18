@@ -147,6 +147,13 @@ export interface DigitalProduct {
   dimensionsMm?: string;
   shipProfileId?: string;
   handlingDays?: string;
+  /** Real-Tindie parity: volume pricing tiers (the production product page
+   *  has a Volume Pricing anchor; qty breaks are a first-class field). */
+  volumeTiers?: { minQty: number; price: number }[];
+  /** Customs fields — integration doc §2.3: international label purchase is
+   *  BLOCKED until these exist. Real Shippo needs a customs_declaration. */
+  hsCode?: string;
+  originCountry?: string;
   /** Links a listing to a preorder campaign (stock can be 0 while preorder runs). */
   preorderCampaignSlug?: string;
   /** External build-log URL (hackaday.io, a blog, a GitHub repo) — a product's credibility often lives off-platform. */

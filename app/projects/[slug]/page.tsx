@@ -39,6 +39,7 @@ export default function ProjectDetailPage() {
             by <strong className={p.authorRole === "seller" ? "text-teal-dark" : "text-navy"}>{p.authorName}</strong>
             ({p.authorRole === "seller" ? "seller" : "buyer"}) · updated {p.updatedAt}
           </span>
+          {p.featured && <span className="t-tag bg-tag text-white">★ Featured by Tindie</span>}
           {p.verifiedPurchase ? (
             <span className="t-tag bg-emerald-100 text-emerald-700">✓ Verified purchase</span>
           ) : (

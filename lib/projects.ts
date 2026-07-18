@@ -90,6 +90,10 @@ export interface OpenProject {
   /** The seller's right of REPLY — not a right of removal. Rendered as an
    *  official block on the project page, like a review response. */
   sellerResponse?: { text: string; date: string };
+  /** Platform editorial: featured by Tindie — aligns with the existing
+   *  Tindarian recognition culture. An editorial lever, never an entitlement:
+   *  no auto-rule, so it can't be farmed. */
+  featured?: boolean;
   /** Factual-dispute flag: seller (or anyone) escalates to platform review.
    *  Grounds are provable falsehoods or policy violations, not "unfavorable".
    *  Burden of proof sits with the flagger. */
@@ -320,6 +324,7 @@ export const seedProjects: OpenProject[] = [
     likes: 156,
     publication: "published",
     verifiedPurchase: true,
+    featured: true,
     sellerResponse: {
       text: "This is accurate and we should have documented it. The 71°C reading matches our own bench data; the throttle at 50 MS/s is a deliberate protection we failed to put in the manual. Firmware 1.3 (in version notes now) adds a 'prefer 5V' option exactly as suggested, and the manual gains a thermal section. Thank you for the thorough write-up — the $5 project reward is yours, obviously.",
       date: "2026-07-14",

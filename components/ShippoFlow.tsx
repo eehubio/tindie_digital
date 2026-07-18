@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { Fulfillment } from "@/lib/shipping";
+import Link from "next/link";
 
 /**
  * The complete Shippo flow, exactly as their API works (docs.goshippo.com):
@@ -58,6 +59,19 @@ const ATTR_TONE: Record<string, string> = {
 
 export default function ShippoFlow({ f }: { f: Fulfillment }) {
   const { updateFulfillment, showToast } = useApp();
+  const products = useApp((st) => st.allProducts)();
+  // Customs gate (integration doc §2.3): the REAL Shippo API requires a
+  // customs_declaration on international shipments, and a declaration needs
+  // an HS code + origin. If the product record lacks them, we block label
+  // purchase HERE — at quote time — instead of letting the carrier bounce the
+  // parcel at the border two weeks later.
+  const intl = f.destination !== "US";
+  const prod = products.find(
+    (x) => x.title === f.productTitle || (f.sku && x.title.toLowerCase().includes((f.sku || "").split("-")[0].toLowerCase()))
+  );
+  const hsCode = prod?.hsCode;
+  const originCountry = prod?.originCountry ?? "US";
+  const customsBlocked = intl && !hsCode;
   const [shipment, setShipment] = useState<ShipmentResp | null>(null);
   const [tx, setTx] = useState<TxResp | null>(null);
   const [busy, setBusy] = useState<"shipment" | "tx" | null>(null);
@@ -90,6 +104,30 @@ export default function ShippoFlow({ f }: { f: Fulfillment }) {
           mass_unit: "kg",
         },
       ],
+      // Real-API parity: international shipments carry a customs declaration.
+      ...(intl
+        ? {
+            customs_declaration: {
+              contents_type: "MERCHANDISE",
+              incoterm: "DDU",
+              non_delivery_option: "RETURN",
+              certify: true,
+              certify_signer: "SuLab",
+              items: [
+                {
+                  description: f.productTitle.slice(0, 50),
+                  quantity: f.qty ?? 1,
+                  net_weight: String(f.weightG / 1000),
+                  mass_unit: "kg",
+                  value_amount: String((f.goodsValue / (f.qty ?? 1)).toFixed(2)),
+                  value_currency: "USD",
+                  tariff_number: hsCode,
+                  origin_country: originCountry,
+                },
+              ],
+            },
+          }
+        : {}),
       async: false,
     };
     setLastReq({ "POST /api/shippo/shipments": body });
@@ -156,9 +194,27 @@ export default function ShippoFlow({ f }: { f: Fulfillment }) {
         </button>
       </div>
 
+      {/* Customs gate — before any API call */}
+      {customsBlocked && (
+        <div className="t-card p-3 bg-amber-50/60 border-amber-300 text-sm text-slate">
+          🛃 <strong className="text-navy">International shipment blocked:</strong> this product has no HS code, and a
+          customs declaration can&apos;t be built without one. Add it once on the listing and every future
+          international label works.{" "}
+          <Link href="/seller/operations?tab=new" className="text-link hover:underline">Edit listing →</Link>
+          <div className="t-hint mt-1">
+            Caught here at quote time — the alternative is the carrier bouncing the parcel at the border two weeks
+            from now.
+          </div>
+        </div>
+      )}
+
       {/* Step 1 */}
       {!shipment && (
-        <button className="t-btn-primary" disabled={busy === "shipment"} onClick={createShipment}>
+        <button
+          className="t-btn-primary disabled:opacity-40"
+          disabled={busy === "shipment" || customsBlocked}
+          onClick={createShipment}
+        >
           {busy === "shipment" ? "Creating shipment — carriers rating…" : "Create shipment & get live rates (Shippo)"}
         </button>
       )}

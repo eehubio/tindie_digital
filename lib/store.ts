@@ -105,6 +105,7 @@ interface AppState {
   respondToProject: (id: string, text: string) => void;
   flagProject: (id: string, by: string, reason: string) => void;
   resolveProjectFlag: (id: string, uphold: boolean, resolution: string) => void;
+  toggleFeatured: (id: string) => void;
   submitEntry: (challengeId: string, entryId: string, projectId: string) => void;
   reviewEntry: (challengeId: string, entryId: string, approve: boolean, reason?: string) => void;
 
@@ -345,6 +346,11 @@ export const useApp = create<AppState>()(
       ),
       toast: "Official response posted on the project page",
     })),
+  toggleFeatured: (id) =>
+    set((s) => ({
+      projects: s.projects.map((p) => (p.id === id ? { ...p, featured: !p.featured } : p)),
+      toast: "Featured status updated — editorial lever, not an entitlement",
+    })),
   flagProject: (id, by, reason) =>
     set((s) => ({
       projects: s.projects.map((p) =>
@@ -538,7 +544,7 @@ export const useApp = create<AppState>()(
       //   - User-created rows → keep, but NORMALIZE missing fields.
       //   - Unknown/missing collections → fall back to seeds via merge below.
       // -------------------------------------------------------------------
-      version: 4,
+      version: 5,
       migrate: (persisted: unknown, fromVersion: number) => {
         const st = (persisted ?? {}) as Record<string, unknown>;
         if (fromVersion < 2) {
@@ -559,6 +565,13 @@ export const useApp = create<AppState>()(
           st.rewardPrograms = seedRewardPrograms;
           st.rewardGrants = seedRewardGrants;
           if (typeof st.walletCredit !== "number") st.walletCredit = 5;
+        }
+        if (fromVersion < 5) {
+          // v5: featured flag defaults false on persisted projects; nothing
+          // else to normalize (volumeTiers/hsCode live on products which are
+          // seed-merged, not persisted rows).
+          const pj5 = Array.isArray(st.projects) ? (st.projects as OpenProject[]) : [];
+          st.projects = pj5.map((x) => ({ ...x, featured: x.featured ?? false }));
         }
         if (fromVersion < 4) {
           // Governance fields (publication / verifiedPurchase) — default old

@@ -13,10 +13,14 @@ import MakeIt from "@/components/MakeIt";
 // Tabs depend on what is being sold. A shipped product needs Shipping & Delivery;
 // a design file needs Files/BOM/Licenses; a bundle needs both. Q&A on everything —
 // a listing stays alive after publish.
+// Tab order mirrors the PRODUCTION product page's anchor navigation
+// (Description | Shipping | Volume Pricing | Projects | Updates | Reviews) so
+// the prototype doubles as the integration's behavioral spec — plus the
+// digital-only tabs the real site doesn't have yet.
 const TAB_SETS: Record<string, string[]> = {
   digital: ["Overview", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
-  physical: ["Overview", "Shipping & Delivery", "Projects", "Q&A", "Reviews"],
-  bundle: ["Overview", "Shipping & Delivery", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
+  physical: ["Overview", "Shipping & Delivery", "Volume Pricing", "Projects", "Q&A", "Reviews"],
+  bundle: ["Overview", "Shipping & Delivery", "Volume Pricing", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
 };
 type Tab = string;
 
@@ -108,6 +112,7 @@ export default function ProductPage() {
             {tab === "Licenses" && <LicenseMatrix p={p} />}
             {tab === "Make It" && <MakeIt p={p} />}
             {tab === "Shipping & Delivery" && <ShippingTab p={p} />}
+            {tab === "Volume Pricing" && <VolumePricingTab p={p} />}
             {tab === "Projects" && <ProjectsTab p={p} />}
             {tab === "Q&A" && <QATab p={p} />}
             {tab === "Reviews" && (
@@ -117,6 +122,11 @@ export default function ProductPage() {
             )}
           </div>
         </div>
+
+      {/* Real-page anatomy: About Seller + More From This Seller live below
+          the tab content on tindie.com — mirrored here, with one addition the
+          production page will gain: the community-projects line. */}
+      <SellerStrip p={p} />
 
         {/* Right: license buy box */}
         <aside className="lg:sticky lg:top-4 space-y-4">
@@ -598,6 +608,96 @@ function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
         Why this tab exists: AI can write a beautiful product description, but it can't write "the third spin passed —
         here's where the first two failed." Design walkthroughs and real buyers' builds are credibility marketing copy can't buy.
       </p>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Volume Pricing — real-Tindie parity (the production page has this anchor;
+// duckyPad Pro: 1 → $84.99, 2–4 → $79.99, 5+ → $74.99).
+// ---------------------------------------------------------------------------
+function VolumePricingTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
+  const tiers = p.volumeTiers ?? [];
+  if (tiers.length === 0)
+    return <div className="t-card p-6 text-center text-muted text-sm">No volume pricing on this listing.</div>;
+  return (
+    <div className="max-w-md">
+      <div className="t-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-panel/60 border-b border-line text-left">
+              <th className="px-4 py-2.5 t-label">Quantity</th>
+              <th className="px-4 py-2.5 t-label text-right">Price</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {tiers.map((t, i) => {
+              const next = tiers[i + 1];
+              return (
+                <tr key={t.minQty}>
+                  <td className="px-4 py-2.5 text-navy font-medium">
+                    {next ? (t.minQty === next.minQty - 1 ? t.minQty : `${t.minQty}–${next.minQty - 1}`) : `${t.minQty}+`}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-navy">${t.price.toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="t-hint mt-2">Discount applies automatically at checkout for multiple units.</p>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// About Seller + More From This Seller — production-page anatomy, plus the
+// community-projects count line the integration adds to the seller card.
+// ---------------------------------------------------------------------------
+function SellerStrip({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
+  const all = useApp((st) => st.allProducts)();
+  const projects = useApp((st) => st.projects);
+  const more = all.filter((x) => x.sellerName === p.sellerName && x.id !== p.id).slice(0, 4);
+  const sellerProductIds = new Set(all.filter((x) => x.sellerName === p.sellerName).map((x) => x.id));
+  const communityCount = projects.filter(
+    (pj) =>
+      pj.publication === "published" &&
+      ((pj.productId && sellerProductIds.has(pj.productId)) ||
+        pj.components.some((c) => c.productId && sellerProductIds.has(c.productId)))
+  ).length;
+
+  return (
+    <div className="mt-10 space-y-6">
+      <div className="t-card p-5 flex items-center gap-4 flex-wrap">
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-600 to-emerald-800 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-navy">{p.sellerName}</div>
+          <div className="text-xs text-muted">Ships from United States</div>
+          {communityCount > 0 && (
+            <Link href="/projects" className="text-xs text-link hover:underline">
+              {communityCount} community project{communityCount > 1 ? "s" : ""} on this store&apos;s products →
+            </Link>
+          )}
+        </div>
+        <span className="t-btn-ghost shrink-0">View Store</span>
+        <span className="t-btn-primary shrink-0">Contact Store</span>
+      </div>
+
+      {more.length > 0 && (
+        <div>
+          <h2 className="font-bold text-navy mb-3">More from this seller</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {more.map((x) => (
+              <Link key={x.id} href={`/product/${x.slug}`} className="t-card p-3 hover:shadow-card transition block">
+                <div className={`h-16 rounded-md bg-gradient-to-br ${x.heroThumb} mb-2`} />
+                <div className="text-sm font-medium text-navy line-clamp-2">{x.title}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
