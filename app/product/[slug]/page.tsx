@@ -19,8 +19,8 @@ import MakeIt from "@/components/MakeIt";
 // digital-only tabs the real site doesn't have yet.
 const TAB_SETS: Record<string, string[]> = {
   digital: ["Overview", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
-  physical: ["Overview", "Shipping & Delivery", "Volume Pricing", "Projects", "Q&A", "Reviews"],
-  bundle: ["Overview", "Shipping & Delivery", "Volume Pricing", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
+  physical: ["Overview", "Shipping & Delivery", "Price Tiers", "Projects", "Q&A", "Reviews"],
+  bundle: ["Overview", "Shipping & Delivery", "Price Tiers", "Design Preview", "Files & Versions", "BOM", "Licenses", "Make It", "Projects", "Q&A", "Reviews"],
 };
 type Tab = string;
 
@@ -112,7 +112,7 @@ export default function ProductPage() {
             {tab === "Licenses" && <LicenseMatrix p={p} />}
             {tab === "Make It" && <MakeIt p={p} />}
             {tab === "Shipping & Delivery" && <ShippingTab p={p} />}
-            {tab === "Volume Pricing" && <VolumePricingTab p={p} />}
+            {tab === "Price Tiers" && <VolumePricingTab p={p} />}
             {tab === "Projects" && <ProjectsTab p={p} />}
             {tab === "Q&A" && <QATab p={p} />}
             {tab === "Reviews" && (
@@ -614,7 +614,8 @@ function ProjectsTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
 
 
 // ---------------------------------------------------------------------------
-// Volume Pricing — real-Tindie parity (the production page has this anchor;
+// Price Tiers — real-Tindie parity: this is the PRODUCTION name (product-edit
+// tab "Price Tiers"; the public anchor renders as Volume Pricing;
 // duckyPad Pro: 1 → $84.99, 2–4 → $79.99, 5+ → $74.99).
 // ---------------------------------------------------------------------------
 function VolumePricingTab({ p }: { p: NonNullable<ReturnType<typeof getProduct>> }) {
